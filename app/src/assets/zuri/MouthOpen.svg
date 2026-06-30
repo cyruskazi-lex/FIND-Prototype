@@ -1,0 +1,10 @@
+<!-- Zuri avatar / Mouth (open, speaking). Placeholder geometry — replace with production artwork.
+     Canvas 80x80. Public id: #zuri-mouth-open. Lips parted slightly (v1 ~6% open) for speech.
+     Filled shapes. interior #2E1A14, lips #7A4A3A / #8A5343. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+  <g id="zuri-mouth-open">
+    <path d="M34.6 47.5 q5.4 -2 10.8 0 q-1.8 4.6 -5.4 4.6 q-3.6 0 -5.4 -4.6 z" fill="#2E1A14" />
+    <path d="M34.6 47.5 q5.4 -2.2 10.8 0 q-5.4 -1 -10.8 0 z" fill="#7A4A3A" />
+    <path d="M35.4 50.6 q4.6 2 9.2 0 q-4.6 1.4 -9.2 0 z" fill="#8A5343" />
+  </g>
+</svg>

@@ -1,0 +1,24 @@
+<!-- Zuri avatar / Body cluster. Placeholder geometry — replace with production artwork.
+     Canvas 80x80. Three v1 portrait groups live here (drawn back-to-front by Zuri.tsx):
+       #zuri-neck    skin column under the jaw (skin #8F5A43 / shadow #764835)
+       #zuri-blazer  navy blazer + lapels (#0C1A26)
+       #zuri-shirt   emerald blouse V + minimal gold necklace
+     Brass (#B08A2E) is reserved for hair cuffs only; jewelry uses gold #C7A24A. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+  <g id="zuri-neck">
+    <path d="M35.6 49 h8.8 v7 q0 3 -4.4 3 q-4.4 0 -4.4 -3 z" fill="#8F5A43" />
+    <path d="M35.6 49 h8.8 v2.4 q-4.4 2.6 -8.8 0 z" fill="#764835" opacity="0.55" />
+  </g>
+  <g id="zuri-blazer">
+    <path d="M8 80 q1 -16 18 -21 l14 7 14 -7 q17 5 18 21 z" fill="#0C1A26" />
+    <path d="M40 59 l-12 4 6 17 z" fill="#0C1A26" />
+    <path d="M40 59 l12 4 -6 17 z" fill="#0C1A26" />
+    <path d="M40 59 l-9 3.2 9 5 z" fill="#16242F" />
+    <path d="M40 59 l9 3.2 -9 5 z" fill="#16242F" />
+  </g>
+  <g id="zuri-shirt">
+    <path d="M33.5 58 l6.5 13 6.5 -13 -6.5 -3 z" fill="#066E5A" />
+    <path d="M34.6 56.2 q5.4 5 10.8 0 q-5.4 4.2 -10.8 0 z" fill="#C7A24A" opacity="0.9" />
+    <circle cx="40" cy="61.4" r="1" fill="#C7A24A" />
+  </g>
+</svg>

@@ -1,0 +1,32 @@
+<!-- Zuri avatar / Head forms. Placeholder geometry — replace with production artwork.
+     Canvas 80x80, centre 40,40. Head ~34x41. Provides four v1 groups:
+       #zuri-ears      ears (behind the face), skin #8F5A43
+       #zuri-skin      soft oval face, rounded jaw, high cheekbones, subtle shadow #764835
+       #zuri-nose      straight bridge + rounded tip
+       #zuri-earrings  small gold teardrop earrings (gold #C7A24A) — drawn in the face layer
+     Black African woman, medium-dark brown skin. No stereotype/caricature. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+  <g id="zuri-ears">
+    <ellipse cx="23.6" cy="40.5" rx="2.8" ry="4.3" fill="#8F5A43" />
+    <ellipse cx="56.4" cy="40.5" rx="2.8" ry="4.3" fill="#8F5A43" />
+    <ellipse cx="23.9" cy="40.5" rx="1.3" ry="2.4" fill="#764835" opacity="0.6" />
+    <ellipse cx="56.1" cy="40.5" rx="1.3" ry="2.4" fill="#764835" opacity="0.6" />
+  </g>
+  <g id="zuri-skin">
+    <ellipse cx="40" cy="39" rx="16.5" ry="20" fill="#8F5A43" />
+    <ellipse cx="31.3" cy="43.6" rx="2.6" ry="3.4" fill="#764835" opacity="0.22" />
+    <ellipse cx="48.7" cy="43.6" rx="2.6" ry="3.4" fill="#764835" opacity="0.22" />
+  </g>
+  <g id="zuri-nose">
+    <path d="M40 38.4 q1.3 3 0.2 5.6 q-1.7 -0.2 -2.1 -1.4 q1.5 -1.6 1.9 -4.2 z" fill="#764835" opacity="0.45" />
+    <ellipse cx="40" cy="44.6" rx="1.7" ry="1.2" fill="#7D4D39" />
+    <circle cx="38.8" cy="45" r="0.4" fill="#5A3528" />
+    <circle cx="41.2" cy="45" r="0.4" fill="#5A3528" />
+  </g>
+  <g id="zuri-earrings">
+    <circle cx="24.2" cy="46.4" r="1.2" fill="#C7A24A" />
+    <path d="M23.4 45.8 h1.6 l-0.8 1.4 z" fill="#C7A24A" />
+    <circle cx="55.8" cy="46.4" r="1.2" fill="#C7A24A" />
+    <path d="M55 45.8 h1.6 l-0.8 1.4 z" fill="#C7A24A" />
+  </g>
+</svg>

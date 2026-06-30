@@ -1,0 +1,17 @@
+<!-- Zuri avatar / Glasses. Placeholder geometry — replace with production artwork.
+     Canvas 80x80. Public id: #zuri-glasses. Thin round navy frames (#263340), transparent
+     lenses, always worn. Frames are even-odd filled rings (outer r5.2 / inner r4.2) so the
+     lens stays transparent and the frame renders in any rasteriser. Lenses sit over the eyes. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+  <g id="zuri-glasses">
+    <path fill="#263340" fill-rule="evenodd"
+      d="M27.8 37.6 a5.2 5.2 0 1 0 10.4 0 a5.2 5.2 0 1 0 -10.4 0 Z
+         M28.8 37.6 a4.2 4.2 0 1 1 8.4 0 a4.2 4.2 0 1 1 -8.4 0 Z" />
+    <path fill="#263340" fill-rule="evenodd"
+      d="M41.8 37.6 a5.2 5.2 0 1 0 10.4 0 a5.2 5.2 0 1 0 -10.4 0 Z
+         M42.8 37.6 a4.2 4.2 0 1 1 8.4 0 a4.2 4.2 0 1 1 -8.4 0 Z" />
+    <rect x="37.9" y="36.9" width="4.2" height="0.9" rx="0.4" fill="#263340" />
+    <rect x="24.0" y="36.6" width="3.9" height="0.9" rx="0.4" fill="#263340" />
+    <rect x="52.1" y="36.6" width="3.9" height="0.9" rx="0.4" fill="#263340" />
+  </g>
+</svg>

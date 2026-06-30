@@ -1,0 +1,29 @@
+<!-- Zuri avatar / Eyes. Placeholder geometry — replace with production artwork.
+     Canvas 80x80. Eye spacing 14 (centres x=33 / x=47, y=37.6). Three groups that
+     Zuri.tsx nests inside the v1 face › eyes layer:
+       #zuri-eye-base  whites + heavier upper lid (the static eye base)
+       #zuri-pupils    iris + pupil + catchlight (Zuri glances these up 1px for "thinking")
+       #zuri-eyelids   closed lids for blinking (Zuri keeps hidden, fades in for a blink)
+     Dark brown eyes, friendly direct contact, no exaggerated lashes. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+  <g id="zuri-eye-base">
+    <ellipse cx="33" cy="37.6" rx="3.6" ry="2.3" fill="#F1FAEE" />
+    <ellipse cx="47" cy="37.6" rx="3.6" ry="2.3" fill="#F1FAEE" />
+    <path d="M29.4 37.2 q3.6 -2.7 7.2 0 q-3.6 -1.2 -7.2 0 z" fill="#1E1A18" />
+    <path d="M43.4 37.2 q3.6 -2.7 7.2 0 q-3.6 -1.2 -7.2 0 z" fill="#1E1A18" />
+  </g>
+  <g id="zuri-pupils">
+    <circle cx="33" cy="37.9" r="1.7" fill="#3B2A1E" />
+    <circle cx="33" cy="37.9" r="0.95" fill="#15100C" />
+    <circle cx="33.6" cy="37.3" r="0.4" fill="#F1FAEE" />
+    <circle cx="47" cy="37.9" r="1.7" fill="#3B2A1E" />
+    <circle cx="47" cy="37.9" r="0.95" fill="#15100C" />
+    <circle cx="47.6" cy="37.3" r="0.4" fill="#F1FAEE" />
+  </g>
+  <g id="zuri-eyelids">
+    <ellipse cx="33" cy="37.6" rx="3.9" ry="2.6" fill="#8F5A43" />
+    <ellipse cx="47" cy="37.6" rx="3.9" ry="2.6" fill="#8F5A43" />
+    <path d="M29.1 37.8 q3.9 1.5 7.8 0 q-3.9 0.7 -7.8 0 z" fill="#2A1F18" />
+    <path d="M43.1 37.8 q3.9 1.5 7.8 0 q-3.9 0.7 -7.8 0 z" fill="#2A1F18" />
+  </g>
+</svg>
