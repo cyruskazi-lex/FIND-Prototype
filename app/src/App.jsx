@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { Zuri } from "./Zuri";
 
 // ============================================================
 // Fumana platform. One application, one shared builder network.
@@ -138,7 +139,7 @@ function CandidateApp({ addBuilder, exit }) {
     setPublished(true); setScreen("dashboard");
   }
 
-  return <Shell role="candidate" exit={exit} nav={nav ? [["dashboard", "Dashboard"], ["upskill", "Upskilling"]] : null} active={screen} onNav={setScreen}>
+  return <Shell role="candidate" exit={exit} nav={nav ? [["dashboard", "Dashboard"], ["upskill", "Upskilling"]] : null} active={screen} onNav={setScreen} showZuri={!NO_DOCK_SCREENS.includes(screen)}>
     {screen === "signin" && <SignIn onNext={() => setScreen("consent")} who="builder" />}
     {screen === "consent" && <Consent onNext={() => setScreen("onboarding")} onBack={() => setScreen("signin")} />}
     {screen === "onboarding" && <Onboarding profile={profile} setProfile={setProfile} onNext={() => setScreen("assessinfo")} onBack={() => setScreen("consent")} />}
@@ -261,11 +262,18 @@ function Interview({ profile, onBack, onComplete }) {
       onComplete({ dimensions: dims, profileStrength: cs, tier: tierOf(cs), weakest: [...dims].sort((a, b) => a.score - b.score)[0] });
     } catch (e) { setErr(true); setScoring(false); }
   }
+  // On the interview screen Zuri is the full-size main presence, not the dock.
+  // She speaks when she asks, listens while you answer, thinks while she works.
+  const zuriState = (busy || scoring) ? "thinking" : !started ? "resting" : question ? (answer.trim().length > 0 ? "listening" : "speaking") : "resting";
   return <Scroll><div style={{ maxWidth: 680, margin: "0 auto" }} className="rise">
-    <Back onClick={onBack} /><Eyebrow>Step 4 of 4 . AI interview with Zuri</Eyebrow>
-    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "8px 0 4px" }}>A short conversation, not a form</h2>
-    <p style={{ color: T.slate, fontSize: 15, marginBottom: 16 }}>Zuri asks {MAX_Q} questions that adapt to your answers. Speak plainly.</p>
-    {!started && <Btn onClick={start}>Begin interview with Zuri</Btn>}
+    <Back onClick={onBack} />
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", marginBottom: 18 }}>
+      <Zuri state={zuriState} size={150} blink />
+      <div style={{ marginTop: 12 }}><Eyebrow>Step 4 of 4 . AI interview with Zuri</Eyebrow></div>
+      <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>A short conversation, not a form</h2>
+      <p style={{ color: T.slate, fontSize: 15, maxWidth: 520 }}>Zuri asks {MAX_Q} questions that adapt to your answers. Speak plainly.</p>
+      {!started && <div style={{ marginTop: 14 }}><Btn onClick={start}>Begin interview with Zuri</Btn></div>}
+    </div>
     {started && <div style={{ display: "grid", gap: 12 }}>
       {qa.map((x, i) => <div key={i}><div style={{ fontSize: 14, color: T.slate }}><b style={{ color: T.emerald, fontFamily: F.mono, fontSize: 12 }}>ZURI</b> . {x.q}</div><div style={{ marginTop: 4, fontSize: 14, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, padding: "9px 12px" }}>{x.a}</div></div>)}
       {scoring && <Card><Spinner label="Zuri is scoring your six dimensions..." /></Card>}
@@ -326,7 +334,7 @@ function EmployerApp({ builders, pipeline, setPipeline, exit }) {
   const shortlist = c => setPipeline(p => p.shortlisted.concat(p.interviewing, p.sow).some(x => x.handle === c.handle) ? p : ({ ...p, shortlisted: [...p.shortlisted, c] }));
   const move = (c, from, to) => setPipeline(p => ({ ...p, [from]: p[from].filter(x => x.handle !== c.handle), [to]: [...p[to], c] }));
   const openSow = c => { setActive(c); setSow(null); setTab("compliance"); };
-  return <Shell role="employer" exit={exit} nav={inApp ? [["search", "Search"], ["pipeline", "Pipeline"], ["compliance", "Compliance"], ["finance", "Finance"]] : null} active={tab} onNav={setTab}>
+  return <Shell role="employer" exit={exit} nav={inApp ? [["search", "Search"], ["pipeline", "Pipeline"], ["compliance", "Compliance"], ["finance", "Finance"]] : null} active={tab} onNav={setTab} showZuri={!NO_DOCK_SCREENS.includes(screen)}>
     {screen === "signin" && <SignIn onNext={() => setScreen("app")} who="employer" />}
     {inApp && tab === "search" && <Search builders={builders} onShortlist={shortlist} chosen={[...pipeline.shortlisted, ...pipeline.interviewing, ...pipeline.sow]} />}
     {inApp && tab === "pipeline" && <Pipeline pipeline={pipeline} move={move} openSow={openSow} />}
@@ -436,9 +444,88 @@ function Finance({ active }) {
 }
 
 // ============================================================
+// ZURI COPILOT DOCK
+// Persistent floating copilot, bottom-right of the app shell. Tapping the
+// resting bubble opens her panel; in the panel she thinks while generating a
+// reply, speaks while it is shown, then rests.
+// One Zuri renders per context: the dock shows the bubble OR the panel, never
+// both. It is suppressed across the whole auth and pre-assessment flow listed
+// in NO_DOCK_SCREENS, so her first appearance is the interview (where she is the
+// full-size presence) and the consent opt-out is not influenced by her being
+// there. The Zuri component namespaces its ids per instance, so contexts never
+// collide.
+// ============================================================
+const NO_DOCK_SCREENS = ["signin", "consent", "onboarding", "assessinfo", "humanreview", "interview"];
+
+function ZuriDock({ role }) {
+  const [open, setOpen] = useState(false);
+  const [msgs, setMsgs] = useState([{ from: "zuri", text: "I am Zuri, your copilot. Ask me about your profile, the assessment, or your next move." }]);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [talking, setTalking] = useState(false);
+  const inputRef = useRef(null);
+  const scrollRef = useRef(null);
+  const talkTimer = useRef(null);
+
+  useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
+  useEffect(() => () => clearTimeout(talkTimer.current), []);
+  useEffect(() => { if (open && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [msgs, busy, open]);
+
+  // Hold the speaking pose for as long as the reply would take to say.
+  function speakFor(text) {
+    clearTimeout(talkTimer.current);
+    setTalking(true);
+    const words = text.trim().split(/\s+/).length;
+    talkTimer.current = setTimeout(() => setTalking(false), Math.min(6000, 1600 + words * 55));
+  }
+
+  async function send() {
+    const q = draft.trim();
+    if (!q || busy) return;
+    setMsgs(m => [...m, { from: "you", text: q }]);
+    setDraft(""); setBusy(true);
+    try {
+      const sys = `You are Zuri, the career copilot inside Fumana, speaking to a ${role}. You are warm in manner and strict in judgment: kind about how you say things, honest about what is true. Answer in three to four plain sentences. Lead with the single most useful thing. No hype, no flattery, no em dashes.`;
+      const reply = await callClaude({ system: sys, messages: [{ role: "user", content: q }], expectJson: false });
+      setMsgs(m => [...m, { from: "zuri", text: reply }]); speakFor(reply);
+    } catch {
+      setMsgs(m => [...m, { from: "zuri", text: "I cannot reach my reasoning right now. Try again in a moment." }]);
+    }
+    setBusy(false);
+  }
+
+  if (!open) {
+    return <button onClick={() => setOpen(true)} aria-label="Open Zuri, your copilot"
+      style={{ position: "fixed", right: 20, bottom: 20, zIndex: 50, width: 64, height: 64, borderRadius: "50%", border: `1px solid ${T.line}`, background: T.surface, boxShadow: "0 6px 20px rgba(12,26,38,0.18)", cursor: "pointer", padding: 4, display: "grid", placeItems: "center" }}>
+      <Zuri state="resting" size={54} blink />
+    </button>;
+  }
+
+  return <div role="dialog" aria-label="Zuri, your copilot" onKeyDown={e => { if (e.key === "Escape") setOpen(false); }}
+    style={{ position: "fixed", right: 20, bottom: 20, zIndex: 50, width: 340, maxWidth: "calc(100vw - 40px)", maxHeight: "min(70vh, 560px)", display: "flex", flexDirection: "column", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 16, boxShadow: "0 12px 36px rgba(12,26,38,0.22)", overflow: "hidden" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderBottom: `1px solid ${T.line}` }}>
+      <Zuri state={busy ? "thinking" : talking ? "speaking" : "resting"} size={40} blink />
+      <div style={{ flex: 1 }}>
+        <div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 15 }}>Zuri</div>
+        <div style={{ fontFamily: F.mono, fontSize: 10.5, color: T.slate }}>career copilot</div>
+      </div>
+      <button onClick={() => setOpen(false)} aria-label="Close Zuri copilot" style={{ background: "transparent", border: "none", cursor: "pointer", color: T.slate, fontSize: 20, lineHeight: 1, padding: 4 }}>×</button>
+    </div>
+    <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: 14, display: "grid", gap: 10, alignContent: "start" }}>
+      {msgs.map((m, i) => <div key={i} style={{ justifySelf: m.from === "you" ? "end" : "start", maxWidth: "85%", background: m.from === "you" ? T.paper : "rgba(6,110,90,0.06)", border: `1px solid ${m.from === "you" ? T.line : "rgba(6,110,90,0.25)"}`, borderRadius: 10, padding: "8px 11px", fontSize: 13.5, lineHeight: 1.55 }}>{m.text}</div>)}
+      {busy && <div style={{ justifySelf: "start" }}><Spinner label="Zuri is thinking..." /></div>}
+    </div>
+    <div style={{ display: "flex", gap: 8, padding: 12, borderTop: `1px solid ${T.line}` }}>
+      <input ref={inputRef} value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === "Enter") send(); }} placeholder="Ask Zuri..." style={{ flex: 1, background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 8, padding: "9px 11px", fontSize: 13.5 }} />
+      <Btn small disabled={!draft.trim() || busy} onClick={send}>Send</Btn>
+    </div>
+  </div>;
+}
+
+// ============================================================
 // SHELL (shared header, role switch, nav)
 // ============================================================
-function Shell({ role, exit, nav, active, onNav, children }) {
+function Shell({ role, exit, nav, active, onNav, children, showZuri }) {
   return <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 24px", borderBottom: `1px solid ${T.line}`, flexWrap: "wrap", gap: 10 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
@@ -452,6 +539,7 @@ function Shell({ role, exit, nav, active, onNav, children }) {
       </div>
     </div>
     <div style={{ flex: 1, minHeight: 0 }}>{children}</div>
+    {showZuri && <ZuriDock role={role} />}
   </div>;
 }
 
