@@ -558,6 +558,85 @@ function ReportIssue({ categories, source, logAudit, onBack }) {
   </div></Scroll>;
 }
 
+// ---- Plain-language ethics and data page (both portals). NO MODEL ----
+// One shared page, written for a normal person. Seven sections. No claim we
+// cannot stand behind; where something is not verified across jurisdictions,
+// it says general terms, not false specifics.
+function EthicsPage({ onBack }) {
+  const ul = { listStyle: "none", display: "grid", gap: 9, marginTop: 12, fontSize: 14 };
+  const Section = ({ n, title, accent, children }) => <><Card accent={accent}><Label>{n}. {title}</Label>{children}</Card><div style={{ height: 14 }} /></>;
+  return <Scroll><div style={{ maxWidth: 760, margin: "0 auto" }} className="rise">
+    <Back onClick={onBack} />
+    <Eyebrow>Ethics and data</Eyebrow>
+    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "8px 0 4px" }}>How this works, in plain words</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 18 }}>Written for a normal person, not a lawyer. Where something is not yet settled across countries, we say so in general terms rather than invent specifics.</p>
+
+    <Section n="1" title="How Zuri assesses you">
+      <ul style={ul}>
+        <Li>Zuri, an AI interviewer, asks a few questions that adapt to your answers.</Li>
+        <Li>An AI model reads your experience and your answers, then scores six dimensions from 0 to 100, each with a written reason you can see.</Li>
+        <Li>Your Profile Strength is a weighted average of those scores, computed by a fixed formula.</Li>
+        <Li>A score is a starting point, not a verdict. You can retake the interview, contest a score, or ask for a human.</Li>
+      </ul>
+    </Section>
+
+    <Section n="2" title="What we collect, why, and how long we keep it">
+      <ul style={ul}>
+        <Li>What: your name and contact details, the experience you write, your interview answers, and the scores produced from them.</Li>
+        <Li>Why: to build a profile employers can trust and to match you to work. We do not sell your data.</Li>
+        <Li>How long: while your profile is active. When you delete it, we remove it.</Li>
+        <Li>We keep the minimum needed to run the service. In this prototype storage is stubbed; real retention runs on the backend.</Li>
+      </ul>
+    </Section>
+
+    <Section n="3" title="Your rights">
+      <ul style={ul}>
+        <Li><b>See</b> every score, with the reason and the evidence it came from.</Li>
+        <Li><b>Export</b> a copy of your data from your data vault.</Li>
+        <Li><b>Delete</b> your profile and data from the network.</Li>
+        <Li><b>Contest</b> a specific score dimension.</Li>
+        <Li><b>Request a human</b> to review any automated decision.</Li>
+        <Li><b>Get accommodations</b>: extra time, a text-only interview, or a written interview, chosen before you start.</Li>
+      </ul>
+    </Section>
+
+    <Section n="4" title="Bias and fairness" accent={T.brass}>
+      <ul style={ul}>
+        <Li>What we do: identity shielding, scores tied to visible evidence, a disclosed formula, fixed bands for everyone, an opt-out to human review, and a text path.</Li>
+        <Li>The honest limits: scoring spoken English can disadvantage non-native speakers and people with speech differences; language models carry bias we reduce but do not claim to eliminate; a rationale is not a guarantee.</Li>
+        <Li>Where something is not solved, we say so. The full fairness posture page has the detail.</Li>
+      </ul>
+    </Section>
+
+    <Section n="5" title="How your identity is shielded, and when it is revealed">
+      <ul style={ul}>
+        <Li>Employers search by evidence. Your name, photo, exact location, and gender are hidden.</Li>
+        <Li>You appear under a shielded handle until you accept an interview.</Li>
+        <Li>Your identity is revealed only when you choose to accept and commit to an engagement. You control the reveal.</Li>
+      </ul>
+    </Section>
+
+    <Section n="6" title="For employers: the fair-terms pledge">
+      <ul style={ul}>
+        <Li>Engaging a builder means agreeing to fair terms: pay as agreed and on time, no discrimination, and respect for the builder's time and boundaries.</Li>
+        <Li>Fumana acts as Employer of Record and carries local employment liability, tax remittance, and IP custody.</Li>
+        <Li>Breaching the pledge can mean a builder reports you, a human review, and removal from the network. These are general terms; specifics per jurisdiction go to counsel.</Li>
+      </ul>
+    </Section>
+
+    <Section n="7" title="Who to contact, and how to report a problem">
+      <ul style={ul}>
+        <Li>Report an issue from Settings (builders) or Trust and Safety (employers): an unfair assessment, a broken commitment, harassment, billing, or anything else.</Li>
+        <Li>Reports are reviewed by a human, not an AI, and come back with a reference and a timeframe.</Li>
+        <Li>In this prototype, contact and support routing is stubbed; real support runs on the backend.</Li>
+      </ul>
+    </Section>
+
+    <div style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, lineHeight: 1.6 }}>Two standing rules: numbers are computed in code, never generated by a model; and the model narrates and assesses, but never invents financial or legal fact.</div>
+    <div style={{ height: 30 }} />
+  </div></Scroll>;
+}
+
 // ---- Fairness posture (both portals). NO MODEL ----
 // A dedicated, honest page: what we do to reduce bias, the known limits, and
 // what a candidate can do if an assessment felt unfair. No claim we cannot
@@ -609,7 +688,7 @@ function FairnessPosture({ onBack }) {
   </div></Scroll>;
 }
 
-function Settings({ builders, onFairness, onAudit, onReport, logAudit }) {
+function Settings({ builders, onFairness, onAudit, onReport, onEthics, logAudit }) {
   const me = builders.find(b => b.isYou);
   const toast = useToast();
   const [lang, setLang] = useState("English");
@@ -677,6 +756,13 @@ function Settings({ builders, onFairness, onAudit, onReport, logAudit }) {
       <Label>Fairness</Label>
       <p style={{ fontSize: 14, color: T.slate, margin: "8px 0 12px" }}>An honest account of how the assessment guards against bias, its known limits, and what you can do if it felt unfair.</p>
       <Btn kind="ghost" small onClick={onFairness}>How you are assessed, and its limits</Btn>
+    </Card>
+    <div style={{ height: 14 }} />
+
+    <Card>
+      <Label>Ethics and data</Label>
+      <p style={{ fontSize: 14, color: T.slate, margin: "8px 0 12px" }}>One plain-language page: how Zuri assesses you, what we collect, your rights, fairness, how your identity is shielded, and how to report a problem.</p>
+      <Btn kind="ghost" small onClick={onEthics}>Read the ethics and data page</Btn>
     </Card>
     <div style={{ height: 14 }} />
 
@@ -912,7 +998,7 @@ function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leave
   const [points, setPoints] = useState(0);
   const [published, setPublished] = useState(false);
   const toast = useToast();
-  const inApp = CAND_NAV.some(([k]) => k === screen) || screen === "fairness" || screen === "audit" || screen === "report";
+  const inApp = CAND_NAV.some(([k]) => k === screen) || ["fairness", "audit", "report", "ethics"].includes(screen);
 
   function finish(r) {
     setResult(r); setPoints(120);
@@ -941,10 +1027,11 @@ function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leave
     {screen === "worth" && <GlobalWorth profile={profile} builders={builders} pipeline={pipeline} />}
     {screen === "community" && <Community builders={builders} pipeline={pipeline} squads={squads} onJoin={joinSquad} onLeave={leaveSquad} onForm={formSquad} />}
     {screen === "alchemist" && <ExperienceAlchemist profile={profile} />}
-    {screen === "settings" && <Settings builders={builders} onFairness={() => setScreen("fairness")} onAudit={() => setScreen("audit")} onReport={() => setScreen("report")} logAudit={logAudit} />}
+    {screen === "settings" && <Settings builders={builders} onFairness={() => setScreen("fairness")} onAudit={() => setScreen("audit")} onReport={() => setScreen("report")} onEthics={() => setScreen("ethics")} logAudit={logAudit} />}
     {screen === "fairness" && <FairnessPosture onBack={() => setScreen("settings")} />}
     {screen === "audit" && <AuditTrail audit={audit} onBack={() => setScreen("settings")} />}
     {screen === "report" && <ReportIssue categories={REPORT_CATS_CANDIDATE} source="candidate" logAudit={logAudit} onBack={() => setScreen("settings")} />}
+    {screen === "ethics" && <EthicsPage onBack={() => setScreen("settings")} />}
   </Shell>;
 }
 
@@ -1511,9 +1598,10 @@ function EmployerApp({ builders, pipeline, setPipeline, logAudit, exit, toRole }
     {inApp && tab === "investments" && <Finance pipeline={pipeline} />}
     {inApp && tab === "saved" && <SavedBuilders saved={saved} pipeline={pipeline} onToggleSave={toggleSave} />}
     {inApp && tab === "team" && <MyTeam pipeline={pipeline} />}
-    {inApp && tab === "trust" && <TrustSafety pipeline={pipeline} onFairness={() => setTab("fairness")} onReport={() => setTab("report")} />}
+    {inApp && tab === "trust" && <TrustSafety pipeline={pipeline} onFairness={() => setTab("fairness")} onReport={() => setTab("report")} onEthics={() => setTab("ethics")} />}
     {inApp && tab === "fairness" && <FairnessPosture onBack={() => setTab("trust")} />}
     {inApp && tab === "report" && <ReportIssue categories={REPORT_CATS_EMPLOYER} source="employer" logAudit={logAudit} onBack={() => setTab("trust")} />}
+    {inApp && tab === "ethics" && <EthicsPage onBack={() => setTab("trust")} />}
     {inApp && tab === "account" && <Account company={company} setCompany={setCompany} />}
   </Shell>;
 }
@@ -1697,7 +1785,7 @@ const COMPLIANCE_CHECKLIST = [
   { label: "Tax remittance active", state: "done" },
 ];
 
-function TrustSafety({ pipeline, onFairness, onReport }) {
+function TrustSafety({ pipeline, onFairness, onReport, onEthics }) {
   const team = pipeline.sow;
   return <Scroll><div style={{ maxWidth: 860, margin: "0 auto" }} className="rise">
     <Eyebrow>Trust and Safety</Eyebrow>
@@ -1741,6 +1829,11 @@ function TrustSafety({ pipeline, onFairness, onReport }) {
       <Label>Report an issue</Label>
       <p style={{ fontSize: 14, color: T.slate, margin: "8px 0 12px" }}>Builder conduct, a platform issue, a billing dispute, or anything else. Reviewed by a human, not an AI.</p>
       <Btn kind="ghost" small onClick={onReport}>Report an issue</Btn>
+    </Card></div>
+    <div style={{ marginTop: 14 }}><Card>
+      <Label>Ethics and data</Label>
+      <p style={{ fontSize: 14, color: T.slate, margin: "8px 0 12px" }}>One plain-language page covering assessment, data, rights, fairness, identity shielding, your fair-terms pledge, and reporting. The same page builders see.</p>
+      <Btn kind="ghost" small onClick={onEthics}>Read the ethics and data page</Btn>
     </Card></div>
     <div style={{ height: 30 }} />
   </div></Scroll>;
