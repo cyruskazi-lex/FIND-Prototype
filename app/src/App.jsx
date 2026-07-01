@@ -474,9 +474,80 @@ function Settings({ builders }) {
 // honest stubs to be built in Phase 1+.
 const CAND_NAV = [
   ["dashboard", "Growth Dashboard"], ["applications", "Applications and Hub"], ["wallet", "Wallet and Escrow"],
-  ["coach", "Negotiation Coach"], ["community", "Community Ecosystem"], ["alchemist", "Experience Alchemist"],
-  ["upskill", "Upskill and Training"], ["settings", "Settings and Comm"],
+  ["coach", "Negotiation Coach"], ["worth", "Global Worth Simulator"], ["community", "Community Ecosystem"],
+  ["alchemist", "Experience Alchemist"], ["upskill", "Upskill and Training"], ["settings", "Settings and Comm"],
 ];
+// ---- Global Worth Simulator (candidate). NO MODEL ----
+// Given a role and a target market, show purchasing-power context and an
+// illustrative local-value view. Every figure is computed from a labelled
+// cost-of-living index (New York = 100). Nothing is model-generated.
+const MARKETS = [
+  { id: "lagos", name: "Lagos, Nigeria", col: 25 },
+  { id: "nairobi", name: "Nairobi, Kenya", col: 35 },
+  { id: "accra", name: "Accra, Ghana", col: 30 },
+  { id: "kampala", name: "Kampala, Uganda", col: 28 },
+  { id: "cairo", name: "Cairo, Egypt", col: 27 },
+  { id: "joburg", name: "Johannesburg, South Africa", col: 40 },
+  { id: "berlin", name: "Berlin, Germany", col: 70 },
+  { id: "london", name: "London, UK", col: 85 },
+  { id: "newyork", name: "New York, USA", col: 100 },
+];
+
+function GlobalWorth({ profile, builders, pipeline }) {
+  const me = builders.find(b => b.isYou);
+  const offer = me ? pipeline.sow.find(x => x.handle === me.handle) : null;
+  const [role, setRole] = useState(profile.role || (me && me.role) || "");
+  const [monthly, setMonthly] = useState(offer ? String(offer.monthlyUsd) : "4500");
+  const [marketId, setMarketId] = useState("lagos");
+  const ctrl = { width: "100%", marginTop: 7, background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11, fontSize: 14 };
+
+  const m = Number(monthly) || 0;
+  const market = MARKETS.find(x => x.id === marketId) || MARKETS[0];
+  const power = col => Math.round(m * 100 / col);   // New York-equivalent buying power
+  const buyingPower = power(market.col);
+  const multiplier = (100 / market.col).toFixed(1);
+  const annual = m * 12;
+
+  return <Scroll><div style={{ maxWidth: 880, margin: "0 auto" }} className="rise">
+    <Eyebrow>Global Worth Simulator</Eyebrow>
+    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>What your pay is worth around the world</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 18 }}>Given your role and a target market, see the purchasing power and local value of your pay. Figures are computed from an illustrative cost-of-living index, not live data.</p>
+
+    <Card>
+      <div className="row2">
+        <Field label="Role" value={role} onChange={setRole} placeholder="Backend engineer" />
+        <div style={{ marginBottom: 14 }}><Label>Target market</Label><select value={marketId} onChange={e => setMarketId(e.target.value)} style={ctrl}>{MARKETS.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
+      </div>
+      <Field label="Monthly pay, USD" value={monthly} onChange={v => setMonthly(v.replace(/[^0-9]/g, ""))} placeholder="4500" />
+    </Card>
+
+    <div className="dash" style={{ marginTop: 16 }}>
+      <Card accent={T.emerald}><Label>Local buying power in {market.name}</Label>
+        <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 30, color: T.emerald, margin: "6px 0 4px" }}>{usd(buyingPower)} / mo</div>
+        <div style={{ fontSize: 13, color: T.slate }}>Your {usd(m)}/month buys the lifestyle of about {usd(buyingPower)}/month at New York prices, a x{multiplier} advantage. Illustrative.</div>
+      </Card>
+      <Card accent={T.brass}><Label>Annual pay and cost of living</Label>
+        <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 26, color: T.brass, margin: "6px 0 4px" }}>{usd(annual)} / yr</div>
+        <div style={{ fontSize: 13, color: T.slate }}>Cost-of-living index for {market.name}: {market.col} (New York = 100). Illustrative.</div>
+      </Card>
+    </div>
+
+    <div style={{ marginTop: 18 }}>
+      <Label>Your {usd(m)}/month across markets</Label>
+      <div style={{ marginTop: 10, display: "grid", gap: 1, background: T.line, border: `1px solid ${T.line}`, borderRadius: 8, overflow: "hidden" }}>
+        <div style={{ background: T.paper, padding: "9px 14px", display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr", fontFamily: F.mono, fontSize: 10.5, color: T.slate, letterSpacing: 0.3, textTransform: "uppercase" }}><span>market</span><span style={{ textAlign: "right" }}>index</span><span style={{ textAlign: "right" }}>buying power</span></div>
+        {MARKETS.map(x => <div key={x.id} style={{ background: x.id === marketId ? "rgba(6,110,90,0.06)" : T.surface, padding: "10px 14px", display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr", alignItems: "center" }}>
+          <span style={{ fontSize: 13.5, fontWeight: x.id === marketId ? 600 : 400 }}>{x.name}</span>
+          <span style={{ textAlign: "right", fontFamily: F.mono, fontSize: 12, color: T.slate }}>{x.col}</span>
+          <span style={{ textAlign: "right", fontFamily: F.mono, fontSize: 13, color: T.emerald }}>{usd(power(x.col))}</span>
+        </div>)}
+      </div>
+    </div>
+    <div style={{ marginTop: 12, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Illustrative purchasing-power context, computed from a labelled cost-of-living index (New York = 100). Not live market data; no figure is model-generated.</div>
+    <div style={{ height: 30 }} />
+  </div></Scroll>;
+}
+
 // ---- Negotiation Coach (candidate). NEEDS MODEL ----
 // Zuri helps a builder think through an offer: an illustrative pay band for the
 // role and region, what to ask for, and how to phrase it. Routes through the
@@ -574,6 +645,7 @@ function CandidateApp({ addBuilder, builders, pipeline, exit }) {
     {screen === "applications" && <Applications builders={builders} pipeline={pipeline} />}
     {screen === "wallet" && <Wallet builders={builders} pipeline={pipeline} />}
     {screen === "coach" && <NegotiationCoach profile={profile} builders={builders} pipeline={pipeline} />}
+    {screen === "worth" && <GlobalWorth profile={profile} builders={builders} pipeline={pipeline} />}
     {screen === "community" && <Community builders={builders} pipeline={pipeline} />}
     {screen === "alchemist" && <Stub eyebrow="Candidate" title="Experience Alchemist" line="Turn your raw experience into recruiter-ready outcomes, with save and copy." />}
     {screen === "settings" && <Settings builders={builders} />}
