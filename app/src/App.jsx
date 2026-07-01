@@ -50,7 +50,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
 .fbot{display:none}
 .ftoasts{position:fixed;top:64px;right:16px;z-index:70;display:flex;flex-direction:column;gap:8px;max-width:calc(100vw - 32px)}
 .ftoast{background:#0C1A26;color:#EEF3F8;border-left:3px solid #066E5A;border-radius:6px;padding:10px 14px;font-size:13px;box-shadow:0 8px 24px rgba(12,26,38,0.28);animation:toastin .25s ease}
-@media(max-width:760px){
+.fdock{bottom:20px}
+@media(max-width:880px){.fdock{bottom:76px}}
+@media(max-width:880px){
   .fshell{grid-template-columns:1fr;grid-template-rows:52px 1fr;grid-template-areas:"head" "main"}
   .fshell.hasNav{grid-template-rows:52px 1fr 56px;grid-template-areas:"head" "main" "bot"}
   .fside{display:none}
@@ -760,14 +762,14 @@ function ZuriDock({ role }) {
   }
 
   if (!open) {
-    return <button onClick={() => setOpen(true)} aria-label="Open Zuri, your copilot"
-      style={{ position: "fixed", right: 20, bottom: 20, zIndex: 50, width: 64, height: 64, borderRadius: "50%", border: `1px solid ${T.line}`, background: T.surface, boxShadow: "0 6px 20px rgba(12,26,38,0.18)", cursor: "pointer", padding: 4, display: "grid", placeItems: "center" }}>
+    return <button onClick={() => setOpen(true)} aria-label="Open Zuri, your copilot" className="fdock"
+      style={{ position: "fixed", right: 20, zIndex: 50, width: 64, height: 64, borderRadius: "50%", border: `1px solid ${T.line}`, background: T.surface, boxShadow: "0 6px 20px rgba(12,26,38,0.18)", cursor: "pointer", padding: 4, display: "grid", placeItems: "center" }}>
       <ZuriPhoto size={54} />
     </button>;
   }
 
-  return <div role="dialog" aria-label="Zuri, your copilot" onKeyDown={e => { if (e.key === "Escape") setOpen(false); }}
-    style={{ position: "fixed", right: 20, bottom: 20, zIndex: 50, width: 340, maxWidth: "calc(100vw - 40px)", maxHeight: "min(70vh, 560px)", display: "flex", flexDirection: "column", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 16, boxShadow: "0 12px 36px rgba(12,26,38,0.22)", overflow: "hidden" }}>
+  return <div role="dialog" aria-label="Zuri, your copilot" onKeyDown={e => { if (e.key === "Escape") setOpen(false); }} className="fdock"
+    style={{ position: "fixed", right: 20, zIndex: 50, width: 340, maxWidth: "calc(100vw - 40px)", maxHeight: "min(70vh, 560px)", display: "flex", flexDirection: "column", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 16, boxShadow: "0 12px 36px rgba(12,26,38,0.22)", overflow: "hidden" }}>
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderBottom: `1px solid ${T.line}` }}>
       <ZuriPhoto size={40} />
       <div style={{ flex: 1 }}>
