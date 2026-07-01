@@ -393,6 +393,83 @@ function Community({ builders, pipeline }) {
   </div></Scroll>;
 }
 
+// ---- Settings and Comm (candidate). NO MODEL ----
+// Language, notification-channel toggles, a two-factor placeholder, and the data
+// vault. Export is a real client-side JSON download of what the app holds about
+// you; delete is the flagged entry point to the Phase 4 data-rights flow.
+const LANGUAGES = ["English", "Francais", "Kiswahili", "Yoruba", "Hausa", "Amharic", "Portugues", "Arabic"];
+const CHANNELS = [{ id: "whatsapp", name: "WhatsApp" }, { id: "sms", name: "SMS" }, { id: "email", name: "Email" }];
+
+const Toggle = ({ on, onClick, label }) => <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={onClick}
+  style={{ width: 44, height: 24, borderRadius: 12, border: `1px solid ${on ? T.emerald : T.line}`, background: on ? T.emerald : T.mute, position: "relative", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+  <span aria-hidden="true" style={{ position: "absolute", top: 2, left: on ? 22 : 2, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left .15s" }} />
+</button>;
+
+function Settings({ builders }) {
+  const me = builders.find(b => b.isYou);
+  const toast = useToast();
+  const [lang, setLang] = useState("English");
+  const [channels, setChannels] = useState({ whatsapp: true, sms: false, email: true });
+  const [twoFA, setTwoFA] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleted, setDeleted] = useState(false);
+
+  function exportData() {
+    const data = { profile: me || null, preferences: { language: lang, notifications: channels, twoFactor: twoFA }, note: "Illustrative export of the data Fumana holds about you. Real exports are assembled on the backend." };
+    try {
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+      const a = document.createElement("a"); a.href = url; a.download = "fumana-my-data.json"; a.click();
+      URL.revokeObjectURL(url);
+      toast("Your data export downloaded.");
+    } catch { toast("Data export runs on the backend in production."); }
+  }
+
+  const row = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "11px 0", borderTop: `1px solid ${T.mute}` };
+  const ctrl = { marginTop: 7, background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11, fontSize: 14 };
+
+  return <Scroll><div style={{ maxWidth: 760, margin: "0 auto" }} className="rise">
+    <Eyebrow>Settings and Comm</Eyebrow>
+    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Settings and communication</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 18 }}>Your language, how we reach you, security, and the data Fumana holds about you.</p>
+
+    <Card><Label>Language</Label>
+      <select value={lang} onChange={e => setLang(e.target.value)} style={{ ...ctrl, width: "100%" }}>{LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}</select>
+      <div style={{ marginTop: 8, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Applied across the app on the backend.</div>
+    </Card>
+    <div style={{ height: 14 }} />
+
+    <Card><Label>Notification channels</Label>
+      <div style={{ marginTop: 6 }}>{CHANNELS.map(ch => <div key={ch.id} style={row}>
+        <span style={{ fontSize: 14 }}>{ch.name}</span>
+        <Toggle on={channels[ch.id]} label={ch.name} onClick={() => setChannels(c => ({ ...c, [ch.id]: !c[ch.id] }))} />
+      </div>)}</div>
+      <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Delivery runs on the backend.</div>
+    </Card>
+    <div style={{ height: 14 }} />
+
+    <Card><Label>Security</Label>
+      <div style={row}><div><div style={{ fontSize: 14 }}>Two-factor authentication</div><div style={{ color: T.slate, fontSize: 12.5, marginTop: 2 }}>Placeholder. Real 2FA enrolment is a backend step.</div></div>
+        <Toggle on={twoFA} label="Two-factor authentication" onClick={() => { setTwoFA(v => !v); toast("Two-factor setup runs on the backend."); }} /></div>
+    </Card>
+    <div style={{ height: 14 }} />
+
+    <Card accent={T.brass}><Label>Your data vault</Label>
+      <p style={{ fontSize: 14, color: T.slate, margin: "8px 0 14px" }}>See, export, or delete the data Fumana holds about you. You own it.</p>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Btn small onClick={exportData}>Export my data</Btn>
+        {!confirmDelete && !deleted && <Btn small kind="ghost" onClick={() => setConfirmDelete(true)}>Delete my data</Btn>}
+      </div>
+      {confirmDelete && !deleted && <div style={{ marginTop: 14, background: T.paper, border: `1px solid ${T.alert}`, borderRadius: 8, padding: 14 }}>
+        <div style={{ fontSize: 14, marginBottom: 10 }}>This requests removal of your profile and data from the network. This cannot be undone.</div>
+        <div style={{ display: "flex", gap: 10 }}><Btn small kind="ghost" onClick={() => { setConfirmDelete(false); setDeleted(true); }}>Confirm delete</Btn><Btn small kind="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Btn></div>
+      </div>}
+      {deleted && <div style={{ marginTop: 14, background: T.paper, border: `1px solid ${T.line}`, borderRadius: 8, padding: 14, fontSize: 13.5, color: T.slate }}>Deletion requested. A reviewer will confirm and your profile is withdrawn from the network. Stubbed queue in this prototype.</div>}
+      <div style={{ marginTop: 12, fontFamily: F.mono, fontSize: 11, color: T.slate }}>This is the entry point to your data rights. Contest, human review, and the full data-rights flow arrive in the trust and safety phase.</div>
+    </Card>
+    <div style={{ height: 30 }} />
+  </div></Scroll>;
+}
+
 // Candidate Carbon nav. Growth Dashboard and Upskill are real; the rest are
 // honest stubs to be built in Phase 1+.
 const CAND_NAV = [
@@ -432,7 +509,7 @@ function CandidateApp({ addBuilder, builders, pipeline, exit }) {
     {screen === "wallet" && <Wallet builders={builders} pipeline={pipeline} />}
     {screen === "community" && <Community builders={builders} pipeline={pipeline} />}
     {screen === "alchemist" && <Stub eyebrow="Candidate" title="Experience Alchemist" line="Turn your raw experience into recruiter-ready outcomes, with save and copy." />}
-    {screen === "settings" && <Stub eyebrow="Candidate" title="Settings and Comm" line="Language, notification channels, two-factor, and your data vault." />}
+    {screen === "settings" && <Settings builders={builders} />}
   </Shell>;
 }
 
