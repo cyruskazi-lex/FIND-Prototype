@@ -477,6 +477,70 @@ const CAND_NAV = [
   ["coach", "Negotiation Coach"], ["worth", "Global Worth Simulator"], ["community", "Community Ecosystem"],
   ["alchemist", "Experience Alchemist"], ["upskill", "Upskill and Training"], ["settings", "Settings and Comm"],
 ];
+// ---- Experience Alchemist (candidate). NEEDS MODEL ----
+// A first-class screen: reshapes the builder's raw, plainly-written experience
+// into recruiter-ready outcomes grounded only in what they wrote, with save and
+// copy. Routes through /api/claude; inert (clear waiting state) until a provider.
+function ExperienceAlchemist({ profile }) {
+  const toast = useToast();
+  const [raw, setRaw] = useState(profile.experience || "");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [result, setResult] = useState(null);
+  const [saved, setSaved] = useState(false);
+  const ready = raw.trim().length > 30;
+
+  async function run() {
+    setBusy(true); setErr(""); setResult(null); setSaved(false);
+    try {
+      const sys = "You are Zuri's Experience Alchemist for Fumana. Turn a builder's raw, plainly-written experience into recruiter-ready outcomes without inventing anything. Return a concise role title, a one-line headline, three to five outcome bullets phrased as concrete achievements grounded only in what they wrote, six to ten skills evident from the text, and a one-sentence integrity note confirming nothing was added beyond what they described. Warm and honest, no hype, no em dashes. Return ONLY JSON, no fences. Shape: {\"role\":string,\"headline\":string,\"outcomes\":[string],\"skills\":[string],\"integrityNote\":string}.";
+      setResult(await callClaude({ system: sys, messages: [{ role: "user", content: raw }], expectJson: true }));
+    } catch (e) {
+      setErr(String(e).includes("501") ? "config" : "fail");
+    }
+    setBusy(false);
+  }
+
+  function copy() {
+    if (!result) return;
+    const text = [result.role, result.headline, "", "Outcomes:", ...(result.outcomes || []).map(o => `- ${o}`), "", "Skills: " + (result.skills || []).join(", "), "", result.integrityNote].filter(x => x !== undefined).join("\n");
+    try { navigator.clipboard.writeText(text); toast("Copied to clipboard."); }
+    catch { toast("Copy is not available in this browser."); }
+  }
+
+  return <Scroll><div style={{ maxWidth: 760, margin: "0 auto" }} className="rise">
+    <Eyebrow>Experience Alchemist</Eyebrow>
+    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Turn your experience into recruiter-ready outcomes</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 18 }}>Write plainly. Zuri reshapes it into a role, headline, outcomes, and skills, grounded only in what you wrote. Nothing invented.</p>
+    <Card>
+      <Field label="Your experience, in your words" rows={7} value={raw} onChange={setRaw} placeholder="What have you built, what did you handle, what went wrong and how did you fix it." />
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 4 }}>{busy ? <Spinner label="Zuri is reshaping your experience..." /> : <Btn disabled={!ready} onClick={run}>Run the Alchemist</Btn>}<Hint show={!ready && !busy}>Add a few sentences of experience to continue.</Hint></div>
+    </Card>
+
+    {err === "config" && <div style={{ marginTop: 16 }}><Card accent={T.brass}><Label>Alchemist is ready, waiting on a provider</Label><p style={{ fontSize: 14, color: T.slate, marginTop: 8 }}>The Experience Alchemist is built and wired through the model proxy. It lights up the moment a model provider is connected.</p></Card></div>}
+    {err === "fail" && <div style={{ marginTop: 16, color: T.alert, fontSize: 14, display: "flex", gap: 12, alignItems: "center" }}>Zuri did not respond. <Btn kind="ghost" small onClick={run}>Try again</Btn></div>}
+
+    {result && <div style={{ marginTop: 16 }}><Card accent={T.emerald}>
+      <Label>Recruiter-ready</Label>
+      <div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 19, marginTop: 8 }}>{result.role}</div>
+      {result.headline && <div style={{ color: T.slate, fontSize: 14.5, marginTop: 4 }}>{result.headline}</div>}
+      {Array.isArray(result.outcomes) && result.outcomes.length > 0 && <div style={{ marginTop: 16 }}><Label>Outcomes</Label>
+        <ul style={{ listStyle: "none", display: "grid", gap: 8, marginTop: 8 }}>{result.outcomes.map((o, i) => <li key={i} style={{ display: "flex", gap: 9, fontSize: 14 }}><span style={{ color: T.emerald }}>.</span><span>{o}</span></li>)}</ul>
+      </div>}
+      {Array.isArray(result.skills) && result.skills.length > 0 && <div style={{ marginTop: 16 }}><Label>Skills</Label>
+        <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 8 }}>{result.skills.map((s, i) => <span key={i} style={{ fontFamily: F.mono, fontSize: 11.5, color: T.emerald, border: `1px solid ${T.line}`, borderRadius: 4, padding: "3px 8px" }}>{s}</span>)}</div>
+      </div>}
+      {result.integrityNote && <p style={{ marginTop: 14, fontSize: 12.5, color: T.slate }}>{result.integrityNote}</p>}
+      <div style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Btn small disabled={saved} onClick={() => { setSaved(true); toast("Saved. Real persistence is a backend step."); }}>{saved ? "Saved" : "Save to profile"}</Btn>
+        <Btn kind="ghost" small onClick={copy}>Copy</Btn>
+      </div>
+      <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Saved locally in this prototype. Real persistence is a backend step.</div>
+    </Card></div>}
+    <div style={{ height: 30 }} />
+  </div></Scroll>;
+}
+
 // ---- Global Worth Simulator (candidate). NO MODEL ----
 // Given a role and a target market, show purchasing-power context and an
 // illustrative local-value view. Every figure is computed from a labelled
@@ -647,7 +711,7 @@ function CandidateApp({ addBuilder, builders, pipeline, exit }) {
     {screen === "coach" && <NegotiationCoach profile={profile} builders={builders} pipeline={pipeline} />}
     {screen === "worth" && <GlobalWorth profile={profile} builders={builders} pipeline={pipeline} />}
     {screen === "community" && <Community builders={builders} pipeline={pipeline} />}
-    {screen === "alchemist" && <Stub eyebrow="Candidate" title="Experience Alchemist" line="Turn your raw experience into recruiter-ready outcomes, with save and copy." />}
+    {screen === "alchemist" && <ExperienceAlchemist profile={profile} />}
     {screen === "settings" && <Settings builders={builders} />}
   </Shell>;
 }
