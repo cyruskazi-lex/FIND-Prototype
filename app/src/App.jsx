@@ -1,5 +1,11 @@
-import { useState, useRef, useEffect } from "react";
-import { Zuri } from "./Zuri";
+import { useState, useRef, useEffect, useCallback } from "react";
+import zuriFace from "./assets/zuri/zuri-face.png";
+import introVideo from "./assets/zuri/zuri-intro.mp4";
+import q1Video from "./assets/zuri/zuri-q1.mp4";
+import q2Video from "./assets/zuri/zuri-q2.mp4";
+import q3Video from "./assets/zuri/zuri-q3.mp4";
+import q4Video from "./assets/zuri/zuri-q4.mp4";
+import q5Video from "./assets/zuri/zuri-q5.mp4";
 
 // ============================================================
 // Fumana platform. One application, one shared builder network.
@@ -29,6 +35,7 @@ textarea,input{font-family:'Inter',sans-serif}
 .doors{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:760px){.row2,.dash,.mods,.kanban,.split,.doors{grid-template-columns:1fr}}
 button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #066E5A;outline-offset:2px}
+@keyframes zuriPulse{0%{box-shadow:0 0 0 2px rgba(6,110,90,0.55),0 0 0 5px rgba(6,110,90,0.16)}50%{box-shadow:0 0 0 3px rgba(6,110,90,0.30),0 0 0 15px rgba(6,110,90,0)}100%{box-shadow:0 0 0 2px rgba(6,110,90,0.55),0 0 0 5px rgba(6,110,90,0.16)}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 `;
 
@@ -65,7 +72,6 @@ const MODULES = {
   "Problem solving": { id: "solve", title: "Structured Problem Solving", blurb: "Frame ambiguous problems and show your reasoning.", pts: 240 },
   "Technical depth": { id: "deep", title: "Technical Deep Dive", blurb: "Close the gap on the skills employers ask for most.", pts: 320 },
 };
-const MAX_Q = 5;
 
 // ---- seeded network so employer search has a pool ----
 const SEED_BUILDERS = [
@@ -233,58 +239,158 @@ const HumanReview = ({ onSwitch }) => <Centered><div style={{ maxWidth: 460 }} c
   <Card><p style={{ fontSize: 14, color: T.slate, lineHeight: 1.6 }}>You declined AI assessment, which is your right. A human reviewer will complete your evaluation and your profile opens once they finish. In this prototype the human-review queue is stubbed, so no score is produced here.</p><div style={{ marginTop: 14 }}><Btn kind="ghost" small onClick={onSwitch}>Change my mind, use the AI interview</Btn></div></Card>
 </div></Centered>;
 
-const INTERVIEW_SYS = "You are Zuri, a warm, professional AI interviewer for Fumana, assessing a builder for global remote engineering work. Conduct a brief adaptive competency interview. Ask exactly ONE question per turn, short and concrete. Adapt each question to the candidate's previous answers and their role. Across the interview, probe communication, professionalism, async and remote work, collaboration, problem solving, and technical depth. Do not score, do not summarise, do not greet repeatedly. Output only the next question.";
+// ---- Zuri voice: real TTS from the backend, SpeechSynthesis as fallback ----
+// Level 1 voice: audio only, no lip-sync. `speaking` is true while audio plays.
+// Used by the copilot dock (the interview uses pre-rendered video clips whose
+// voice is baked in). If /api/tts fails (no key, provider down), the browser
+// speaks the same line with SpeechSynthesis so Zuri is never silent.
+function useZuriVoice() {
+  const [speaking, setSpeaking] = useState(false);
+  const audioRef = useRef(null);
+  const urlRef = useRef(null);
+
+  const cleanupAudio = () => {
+    if (audioRef.current) { audioRef.current.onended = null; audioRef.current.onerror = null; audioRef.current.pause(); audioRef.current = null; }
+    if (urlRef.current) { URL.revokeObjectURL(urlRef.current); urlRef.current = null; }
+  };
+  const stop = useCallback(() => {
+    cleanupAudio();
+    if (typeof window !== "undefined" && window.speechSynthesis) window.speechSynthesis.cancel();
+    setSpeaking(false);
+  }, []);
+  const fallback = useCallback((text) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) { setSpeaking(false); return; }
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1; u.pitch = 1;
+    u.onend = () => setSpeaking(false);
+    u.onerror = () => setSpeaking(false);
+    setSpeaking(true);
+    window.speechSynthesis.speak(u);
+  }, []);
+  const speak = useCallback(async (text) => {
+    const line = (text || "").trim();
+    if (!line) return;
+    stop();
+    setSpeaking(true);
+    let handled = false;
+    const goFallback = () => { if (handled) return; handled = true; cleanupAudio(); fallback(line); };
+    try {
+      const res = await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: line }) });
+      if (!res.ok) throw new Error("tts " + res.status);
+      const buf = await res.arrayBuffer();
+      if (!buf.byteLength) throw new Error("empty audio");
+      const url = URL.createObjectURL(new Blob([buf], { type: res.headers.get("Content-Type") || "audio/mpeg" }));
+      urlRef.current = url;
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => { handled = true; cleanupAudio(); setSpeaking(false); };
+      audio.onerror = goFallback;
+      await audio.play();
+    } catch {
+      goFallback();
+    }
+  }, [stop, fallback]);
+
+  useEffect(() => stop, [stop]);
+  return { speaking, speak, stop };
+}
+
+// Scripted interview clips. Zuri delivers the intro and each question as a
+// pre-rendered video; her voice is in the clip, so no TTS here. Each `text` is
+// the exact spoken line — it drives the on-screen caption (accessibility) and
+// the scoring transcript.
+const INTERVIEW_INTRO = { id: "intro", video: introVideo, text: "Hi, I'm Zuri. I'll ask you five questions. Take your time, answer each in your own words, and speak the way you naturally would." };
+const INTERVIEW_SCRIPT = [
+  { id: "q1", video: q1Video, text: "Tell me about a time you had to explain something technical to someone who did not share your background. How did you make sure they understood?" },
+  { id: "q2", video: q2Video, text: "Tell me about a time you disagreed with a manager or a client about how something should be done. What did you do?" },
+  { id: "q3", video: q3Video, text: "Walk me through how you keep a teammate in another country unblocked when you are offline for several hours." },
+  { id: "q4", video: q4Video, text: "Tell me about a time you were given a task without clear instructions. How did you decide what to build?" },
+  { id: "q5", video: q5Video, text: "Describe the hardest technical problem you have solved. How did you find the root cause, and what did you change?" },
+];
+
+// Zuri on camera, with a soft pulsing ring around the frame while the clip
+// plays (the speaking cue at Level 1 — no lip-sync). A click precedes every
+// clip, so autoplay with audio is allowed; controls cover any blocked autoplay.
+function VideoStage({ src, autoPlay, playing, onPlay, onStop }) {
+  const ref = useRef(null);
+  useEffect(() => { if (autoPlay && ref.current) ref.current.play?.().catch(() => {}); }, [autoPlay, src]);
+  return <div style={{ position: "relative", width: "100%", maxWidth: 420 }}>
+    <video ref={ref} src={src} playsInline controls preload="metadata" aria-label="Zuri speaking"
+      onPlay={onPlay} onPlaying={onPlay} onEnded={onStop} onPause={onStop}
+      style={{ width: "100%", borderRadius: 16, display: "block", background: T.ink, border: `1px solid ${T.line}` }} />
+    {playing && <span aria-hidden="true" style={{ position: "absolute", inset: -3, borderRadius: 18, pointerEvents: "none", animation: "zuriPulse 1.6s ease-in-out infinite" }} />}
+  </div>;
+}
 
 function Interview({ profile, onBack, onComplete }) {
-  const [history, setHistory] = useState([]); const [qa, setQa] = useState([]);
-  const [question, setQuestion] = useState(""); const [answer, setAnswer] = useState("");
-  const [count, setCount] = useState(0); const [busy, setBusy] = useState(false);
-  const [scoring, setScoring] = useState(false); const [err, setErr] = useState(false); const [started, setStarted] = useState(false);
-  async function ask(hist) {
-    setBusy(true); setErr(false);
-    try { const msgs = hist.length ? hist : [{ role: "user", content: `My role is ${profile.role}. My experience: ${profile.experience}. Please begin the interview.` }]; const q = await callClaude({ system: INTERVIEW_SYS, messages: msgs, expectJson: false }); setQuestion(q); setHistory([...msgs, { role: "assistant", content: q }]); } catch (e) { setErr(true); } setBusy(false);
-  }
-  function start() { setStarted(true); ask([]); }
-  async function submit() {
+  // Scripted video interview: an intro clip, then five question clips. Zuri's
+  // voice is in each clip; the candidate answers each in turn. Scoring runs on
+  // the collected transcript, unchanged.
+  const [phase, setPhase] = useState("ready"); // ready | intro | qa | scoring
+  const [idx, setIdx] = useState(0);
+  const [qa, setQa] = useState([]);
+  const [answer, setAnswer] = useState("");
+  const [playing, setPlaying] = useState(false);
+  const [err, setErr] = useState(false);
+  const total = INTERVIEW_SCRIPT.length;
+  const captionFor = i => INTERVIEW_SCRIPT[i].text || `Interview question ${i + 1}`;
+  const last = idx + 1 >= total;
+
+  function submit() {
     if (answer.trim().length < 4) return;
-    const nextQa = [...qa, { q: question, a: answer }]; setQa(nextQa);
-    const newHist = [...history, { role: "user", content: answer }]; setAnswer("");
-    if (count + 1 >= MAX_Q) { await score(nextQa); return; }
-    setCount(count + 1); await ask(newHist);
+    const nextQa = [...qa, { q: captionFor(idx), a: answer.trim() }];
+    setQa(nextQa); setAnswer(""); setPlaying(false);
+    if (last) { score(nextQa); return; }
+    setIdx(idx + 1);
   }
   async function score(finalQa) {
-    setScoring(true); setErr(false);
+    setPhase("scoring"); setErr(false);
     try {
       const transcript = finalQa.map((x, i) => `Q${i + 1}: ${x.q}\nA${i + 1}: ${x.a}`).join("\n\n");
       const sys = "You are the Fumana scoring model, powered by Telos. Using the builder's experience and interview transcript, score six dimensions for global remote enterprise work: " + DIMENSIONS.join(", ") + ". Technical depth draws on experience and technical answers. The others draw on the interview, not the resume alone. Score each 0 to 100 with a fair, specific one-sentence rationale grounded in what they said. Be honest, name real gaps. Return ONLY JSON, no fences. Shape: {\"dimensions\":[{\"name\":string,\"score\":number,\"rationale\":string}]}. Use exactly those six names.";
       const out = await callClaude({ system: sys, messages: [{ role: "user", content: `Experience:\n${profile.experience}\n\nInterview:\n${transcript}` }], expectJson: true });
       const dims = out.dimensions || []; const cs = composite(dims);
       onComplete({ dimensions: dims, profileStrength: cs, tier: tierOf(cs), weakest: [...dims].sort((a, b) => a.score - b.score)[0] });
-    } catch (e) { setErr(true); setScoring(false); }
+    } catch { setErr(true); }
   }
-  // On the interview screen Zuri is the full-size main presence, not the dock.
-  // She speaks when she asks, listens while you answer, thinks while she works.
-  const zuriState = (busy || scoring) ? "thinking" : !started ? "resting" : question ? (answer.trim().length > 0 ? "listening" : "speaking") : "resting";
+
+  const answered = qa.length > 0 && <div style={{ marginTop: 24, display: "grid", gap: 8, width: "100%", maxWidth: 560 }}>
+    {qa.map((x, i) => <div key={i} style={{ fontSize: 13.5, color: T.slate }}><b style={{ color: T.emerald, fontFamily: F.mono, fontSize: 11 }}>Q{i + 1}</b> {x.a}</div>)}
+  </div>;
+
   return <Scroll><div style={{ maxWidth: 680, margin: "0 auto" }} className="rise">
     <Back onClick={onBack} />
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", marginBottom: 18 }}>
-      <Zuri state={zuriState} size={150} blink />
-      <div style={{ marginTop: 12 }}><Eyebrow>Step 4 of 4 . AI interview with Zuri</Eyebrow></div>
+    <div style={{ textAlign: "center", marginBottom: 16 }}>
+      <Eyebrow>Step 4 of 4 . Interview with Zuri</Eyebrow>
       <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>A short conversation, not a form</h2>
-      <p style={{ color: T.slate, fontSize: 15, maxWidth: 520 }}>Zuri asks {MAX_Q} questions that adapt to your answers. Speak plainly.</p>
-      {!started && <div style={{ marginTop: 14 }}><Btn onClick={start}>Begin interview with Zuri</Btn></div>}
+      <p style={{ color: T.slate, fontSize: 15, maxWidth: 520, margin: "0 auto" }}>Zuri asks {total} questions on camera. Watch each one, then answer in your own words.</p>
     </div>
-    {started && <div style={{ display: "grid", gap: 12 }}>
-      {qa.map((x, i) => <div key={i}><div style={{ fontSize: 14, color: T.slate }}><b style={{ color: T.emerald, fontFamily: F.mono, fontSize: 12 }}>ZURI</b> . {x.q}</div><div style={{ marginTop: 4, fontSize: 14, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, padding: "9px 12px" }}>{x.a}</div></div>)}
-      {scoring && <Card><Spinner label="Zuri is scoring your six dimensions..." /></Card>}
-      {!scoring && busy && <Card><Spinner label="Zuri is considering your answer..." /></Card>}
-      {!scoring && !busy && question && <Card accent={T.emerald}>
-        <div style={{ fontSize: 15, marginBottom: 10 }}><b style={{ color: T.emerald, fontFamily: F.mono, fontSize: 12 }}>ZURI</b> . {question}</div>
-        <textarea rows={3} value={answer} onChange={e => setAnswer(e.target.value)} placeholder="Answer in a few honest sentences." style={{ width: "100%", background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11, fontSize: 14, resize: "vertical" }} />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}><span style={{ fontFamily: F.mono, fontSize: 11, color: T.slate }}>question {count + 1} of {MAX_Q}</span><Btn small disabled={answer.trim().length < 4} onClick={submit}>{count + 1 >= MAX_Q ? "Finish and score" : "Send answer"}</Btn></div>
-      </Card>}
-      {err && <div style={{ color: T.alert, fontSize: 14, display: "flex", gap: 12, alignItems: "center" }}>Zuri did not respond. <Btn kind="ghost" small onClick={() => (scoring ? score(qa) : ask(history))}>Try again</Btn></div>}
+
+    {phase === "ready" && <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
+      <p style={{ color: T.slate, fontSize: 14 }}>Zuri will introduce herself, then ask her first question.</p>
+      <Btn onClick={() => { setPhase("intro"); }}>Begin interview with Zuri</Btn>
     </div>}
+
+    {phase === "intro" && <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+      <VideoStage key="intro" src={INTERVIEW_INTRO.video} autoPlay playing={playing} onPlay={() => setPlaying(true)} onStop={() => setPlaying(false)} />
+      <Btn onClick={() => { setPlaying(false); setPhase("qa"); }}>Start the questions</Btn>
+    </div>}
+
+    {phase === "qa" && <div style={{ display: "grid", gap: 14, justifyItems: "center" }}>
+      <div style={{ fontFamily: F.mono, fontSize: 11, color: T.slate }}>question {idx + 1} of {total}</div>
+      <VideoStage key={INTERVIEW_SCRIPT[idx].id} src={INTERVIEW_SCRIPT[idx].video} autoPlay playing={playing} onPlay={() => setPlaying(true)} onStop={() => setPlaying(false)} />
+      {INTERVIEW_SCRIPT[idx].text && <div style={{ maxWidth: 520, textAlign: "center", fontSize: 15 }}><b style={{ color: T.emerald, fontFamily: F.mono, fontSize: 12 }}>ZURI</b> . {INTERVIEW_SCRIPT[idx].text}</div>}
+      <div style={{ width: "100%", maxWidth: 560 }}>
+        <textarea rows={3} value={answer} onChange={e => setAnswer(e.target.value)} placeholder="Answer in a few honest sentences." style={{ width: "100%", background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11, fontSize: 14, resize: "vertical" }} />
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}><Btn small disabled={answer.trim().length < 4} onClick={submit}>{last ? "Finish and score" : "Send answer"}</Btn></div>
+      </div>
+      {answered}
+    </div>}
+
+    {phase === "scoring" && <div style={{ display: "flex", justifyContent: "center" }}>{err
+      ? <div style={{ color: T.alert, fontSize: 14, display: "flex", gap: 12, alignItems: "center" }}>Scoring did not complete. <Btn kind="ghost" small onClick={() => score(qa)}>Try again</Btn></div>
+      : <Card><Spinner label="Zuri is scoring your six dimensions..." /></Card>}</div>}
+
     <div style={{ height: 30 }} />
   </div></Scroll>;
 }
@@ -457,27 +563,24 @@ function Finance({ active }) {
 // ============================================================
 const NO_DOCK_SCREENS = ["signin", "consent", "onboarding", "assessinfo", "humanreview", "interview"];
 
+// Zuri's real photo (resting) in a circular frame — the copilot's avatar since
+// the SVG avatar was retired. Static: resting only.
+function ZuriPhoto({ size }) {
+  return <img src={zuriFace} alt="Zuri" width={size} height={size}
+    style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", display: "block" }} />;
+}
+
 function ZuriDock({ role }) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState([{ from: "zuri", text: "I am Zuri, your copilot. Ask me about your profile, the assessment, or your next move." }]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
-  const [talking, setTalking] = useState(false);
+  const voice = useZuriVoice();
   const inputRef = useRef(null);
   const scrollRef = useRef(null);
-  const talkTimer = useRef(null);
 
   useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
-  useEffect(() => () => clearTimeout(talkTimer.current), []);
   useEffect(() => { if (open && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [msgs, busy, open]);
-
-  // Hold the speaking pose for as long as the reply would take to say.
-  function speakFor(text) {
-    clearTimeout(talkTimer.current);
-    setTalking(true);
-    const words = text.trim().split(/\s+/).length;
-    talkTimer.current = setTimeout(() => setTalking(false), Math.min(6000, 1600 + words * 55));
-  }
 
   async function send() {
     const q = draft.trim();
@@ -487,7 +590,7 @@ function ZuriDock({ role }) {
     try {
       const sys = `You are Zuri, the career copilot inside Fumana, speaking to a ${role}. You are warm in manner and strict in judgment: kind about how you say things, honest about what is true. Answer in three to four plain sentences. Lead with the single most useful thing. No hype, no flattery, no em dashes.`;
       const reply = await callClaude({ system: sys, messages: [{ role: "user", content: q }], expectJson: false });
-      setMsgs(m => [...m, { from: "zuri", text: reply }]); speakFor(reply);
+      setMsgs(m => [...m, { from: "zuri", text: reply }]); voice.speak(reply);
     } catch {
       setMsgs(m => [...m, { from: "zuri", text: "I cannot reach my reasoning right now. Try again in a moment." }]);
     }
@@ -497,14 +600,14 @@ function ZuriDock({ role }) {
   if (!open) {
     return <button onClick={() => setOpen(true)} aria-label="Open Zuri, your copilot"
       style={{ position: "fixed", right: 20, bottom: 20, zIndex: 50, width: 64, height: 64, borderRadius: "50%", border: `1px solid ${T.line}`, background: T.surface, boxShadow: "0 6px 20px rgba(12,26,38,0.18)", cursor: "pointer", padding: 4, display: "grid", placeItems: "center" }}>
-      <Zuri state="resting" size={54} blink />
+      <ZuriPhoto size={54} />
     </button>;
   }
 
   return <div role="dialog" aria-label="Zuri, your copilot" onKeyDown={e => { if (e.key === "Escape") setOpen(false); }}
     style={{ position: "fixed", right: 20, bottom: 20, zIndex: 50, width: 340, maxWidth: "calc(100vw - 40px)", maxHeight: "min(70vh, 560px)", display: "flex", flexDirection: "column", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 16, boxShadow: "0 12px 36px rgba(12,26,38,0.22)", overflow: "hidden" }}>
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderBottom: `1px solid ${T.line}` }}>
-      <Zuri state={busy ? "thinking" : talking ? "speaking" : "resting"} size={40} blink />
+      <ZuriPhoto size={40} />
       <div style={{ flex: 1 }}>
         <div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 15 }}>Zuri</div>
         <div style={{ fontFamily: F.mono, fontSize: 10.5, color: T.slate }}>career copilot</div>
