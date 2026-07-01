@@ -986,27 +986,101 @@ function EmployerApp({ builders, pipeline, setPipeline, exit }) {
     setPipeline(p => ({ ...p, shortlisted: p.shortlisted.filter(x => x.handle !== c.handle), interviewing: [...p.interviewing, c] }));
     toast(`Interview requested with ${c.handle}. Identity revealed for the interview.`);
   };
+  // Saved Builders store: the employer's private bookmarks from search.
+  const [saved, setSaved] = useState([]);
+  const toggleSave = c => setSaved(s => s.some(x => x.handle === c.handle) ? s.filter(x => x.handle !== c.handle) : [...s, c]);
   return <Shell role="employer" exit={exit} nav={inApp ? EMP_NAV : null} active={tab} onNav={setTab} showZuri={inApp}>
     {screen === "welcome" && <EmpWelcome onNext={() => setScreen("auth")} />}
     {screen === "auth" && <SignIn onNext={() => setScreen("company-info")} who="employer" />}
     {screen === "company-info" && <EmpCompanyInfo company={company} setCompany={setCompany} onNext={() => setScreen("alignment")} onBack={() => setScreen("auth")} />}
     {screen === "alignment" && <EmpAlignment onEnter={() => { setScreen("app"); setTab("dashboard"); }} onBack={() => setScreen("company-info")} />}
     {inApp && tab === "dashboard" && <EmpDashboard company={company} onEngage={() => setTab("engage")} />}
-    {inApp && tab === "engage" && <Search builders={builders} pipeline={pipeline} onShortlist={shortlist} onRequestInterview={requestInterview} />}
+    {inApp && tab === "engage" && <Search builders={builders} pipeline={pipeline} onShortlist={shortlist} onRequestInterview={requestInterview} saved={saved} onToggleSave={toggleSave} />}
     {inApp && tab === "pipeline" && <Pipeline pipeline={pipeline} move={move} openSow={openSow} />}
     {inApp && tab === "compliance" && <Compliance active={active} sow={sow} setSow={setSow} />}
     {inApp && tab === "investments" && <Finance active={active} />}
-    {inApp && tab === "saved" && <Stub eyebrow="Employer" title="Saved Builders" line="Shortlist and revisit builders you want to keep an eye on." />}
-    {inApp && tab === "team" && <Stub eyebrow="Employer" title="My Team" line="Invite colleagues and manage seats and roles for your organization." />}
+    {inApp && tab === "saved" && <SavedBuilders saved={saved} pipeline={pipeline} onToggleSave={toggleSave} />}
+    {inApp && tab === "team" && <MyTeam pipeline={pipeline} />}
     {inApp && tab === "trust" && <Stub eyebrow="Employer" title="Trust and Safety" line="Your fair-terms commitments, reporting, and dispute resolution." />}
-    {inApp && tab === "account" && <Stub eyebrow="Employer" title="Account" line="Company profile, billing, and verification status." />}
+    {inApp && tab === "account" && <Account company={company} setCompany={setCompany} />}
   </Shell>;
+}
+
+// ---- Saved Builders (employer). NO MODEL. Bookmarks from search ----
+function SavedBuilders({ saved, pipeline, onToggleSave }) {
+  const revealed = h => pipeline.interviewing.concat(pipeline.sow).some(x => x.handle === h);
+  return <Scroll><div style={{ maxWidth: 900, margin: "0 auto" }} className="rise">
+    <Eyebrow>Saved Builders</Eyebrow>
+    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Builders you saved</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 16 }}>Bookmarked from search. Still identity-shielded until you request an interview.</p>
+    {saved.length === 0
+      ? <Card><p style={{ color: T.slate, fontSize: 14 }}>No saved builders yet. Use Save on a search result to bookmark builders here.</p></Card>
+      : <div style={{ display: "grid", gap: 14 }}>{saved.map((c, i) => { const isRev = revealed(c.handle); return <Card key={i} accent={isRev ? T.emerald : T.line}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+          <div><div style={{ fontWeight: 600 }}>{c.handle}{isRev && <span style={{ color: T.slate, fontWeight: 400, fontSize: 13 }}> . {c.role}</span>}</div><div style={{ fontFamily: F.mono, fontSize: 11, color: isRev ? T.emerald : T.slate }}>{isRev ? "identity revealed for interview" : "identity shielded"}</div></div>
+          {typeof c.fit === "number" && <div style={{ textAlign: "right" }}><div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 22, color: T.emerald, lineHeight: 1 }}>{c.fit}%</div><div style={{ fontFamily: F.mono, fontSize: 10, color: T.slate }}>fit . computed</div></div>}
+        </div>
+        <div style={{ display: "flex", gap: 7, flexWrap: "wrap", margin: "12px 0 10px" }}>{(c.skills || []).map((s, j) => <span key={j} style={{ fontFamily: F.mono, fontSize: 11.5, color: T.emerald, border: `1px solid ${T.line}`, borderRadius: 4, padding: "3px 8px" }}>{s}</span>)}</div>
+        {isRev && c.summary && <p style={{ fontSize: 14, color: T.ink, marginBottom: 12 }}>{c.summary}</p>}
+        <div style={{ display: "flex", justifyContent: "flex-end" }}><Btn kind="ghost" small onClick={() => onToggleSave(c)}>Remove</Btn></div>
+      </Card>; })}</div>}
+    <div style={{ height: 30 }} />
+  </div></Scroll>;
+}
+
+// ---- My Team (employer). NO MODEL. Active SOW engagements, cost computed ----
+function MyTeam({ pipeline }) {
+  const team = pipeline.sow;
+  const total = team.reduce((s, c) => s + (c.monthlyUsd || 0), 0);
+  return <Scroll><div style={{ maxWidth: 860, margin: "0 auto" }} className="rise">
+    <Eyebrow>My Team</Eyebrow>
+    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Your active engagements</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 16 }}>Builders at SOW stage. Monthly cost is computed from the agreed budget.</p>
+    {team.length === 0
+      ? <Card><p style={{ color: T.slate, fontSize: 14 }}>No active engagements yet. Move a candidate to SOW pending to build your team.</p></Card>
+      : <Card>
+        <div style={{ display: "grid", gap: 1, background: T.line, border: `1px solid ${T.line}`, borderRadius: 8, overflow: "hidden" }}>
+          {team.map((c, i) => <div key={i} style={{ background: T.surface, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <div><div style={{ fontWeight: 600, fontSize: 14 }}>{c.handle}</div><div style={{ color: T.slate, fontSize: 12.5 }}>{c.role}</div></div>
+            <div style={{ fontFamily: F.mono, fontSize: 15 }}>{usd(c.monthlyUsd || 0)}<span style={{ color: T.slate, fontSize: 11 }}> / mo</span></div>
+          </div>)}
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 14, fontFamily: F.mono, fontSize: 13 }}><span style={{ color: T.slate }}>total monthly, computed</span><span style={{ color: T.emerald, fontWeight: 600 }}>{usd(total)}</span></div>
+      </Card>}
+    <div style={{ height: 30 }} />
+  </div></Scroll>;
+}
+
+// ---- Account (employer). NO MODEL. Editable company profile ----
+function Account({ company, setCompany }) {
+  const toast = useToast();
+  const [draft, setDraft] = useState(company);
+  const set = (k, v) => setDraft(d => ({ ...d, [k]: v }));
+  const dirty = ["name", "domain", "industry", "size", "country"].some(k => (draft[k] || "") !== (company[k] || ""));
+  const ctrl = { width: "100%", marginTop: 7, background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11, fontSize: 14 };
+  return <Scroll><div style={{ maxWidth: 640, margin: "0 auto" }} className="rise">
+    <Eyebrow>Account</Eyebrow>
+    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Company account</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 18 }}>Your organization profile. Editable here; persistence and verification are backend steps.</p>
+    <Card>
+      <Field label="Company name" value={draft.name} onChange={v => set("name", v)} placeholder="Acme GmbH" />
+      <Field label="Work email domain" value={draft.domain} onChange={v => set("domain", v)} placeholder="acme.com" />
+      <div className="row2">
+        <Field label="Industry" value={draft.industry} onChange={v => set("industry", v)} placeholder="Fintech" />
+        <div style={{ marginBottom: 14 }}><Label>Company size</Label><select value={draft.size || ""} onChange={e => set("size", e.target.value)} style={ctrl}><option value="">Select...</option>{EMP_SIZES.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+      </div>
+      <Field label="Headquarters country" value={draft.country} onChange={v => set("country", v)} placeholder="Germany" />
+    </Card>
+    <div style={{ marginTop: 16 }}><Btn disabled={!dirty} onClick={() => { setCompany(draft); toast("Account saved. Persistence is a backend step."); }}>Save changes</Btn></div>
+    <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Company profile, billing, and verification run on the backend.</div>
+    <div style={{ height: 30 }} />
+  </div></Scroll>;
 }
 
 // One bias-shielded result card. Locked shows fit + handle + skills (evidence);
 // role and summary are revealed only once the employer has requested an interview.
 // No name, photo, or location is ever rendered (the network entry has none).
-function SearchCard({ c, isRevealed, isShort, isIn, budget, onShortlist, onRequestInterview }) {
+function SearchCard({ c, isRevealed, isShort, isIn, isSaved, budget, onShortlist, onRequestInterview, onToggleSave }) {
   return <Card accent={isRevealed ? T.emerald : T.line}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
@@ -1019,16 +1093,19 @@ function SearchCard({ c, isRevealed, isShort, isIn, budget, onShortlist, onReque
     {isRevealed
       ? <p style={{ fontSize: 14, color: T.ink, marginBottom: 12 }}>{c.summary}</p>
       : <div style={{ border: `1px dashed ${T.line}`, borderRadius: 8, padding: "10px 12px", marginBottom: 12, fontSize: 13, color: T.slate, background: T.paper }}>Role and summary are shielded. Request an interview to reveal them and commit to this builder.</div>}
-    <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
-      {!isRevealed && <Btn kind="ghost" small disabled={isIn} onClick={() => onShortlist({ ...c, monthlyUsd: Number(budget) })}>{isShort ? "Shortlisted" : "Shortlist"}</Btn>}
-      {isRevealed
-        ? <span style={{ fontFamily: F.mono, fontSize: 12, color: T.emerald, alignSelf: "center" }}>Interview requested</span>
-        : <Btn small onClick={() => onRequestInterview({ ...c, monthlyUsd: Number(budget) })}>Request interview</Btn>}
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+      <Btn kind="ghost" small onClick={() => onToggleSave(c)}>{isSaved ? "Saved" : "Save"}</Btn>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {!isRevealed && <Btn kind="ghost" small disabled={isIn} onClick={() => onShortlist({ ...c, monthlyUsd: Number(budget) })}>{isShort ? "Shortlisted" : "Shortlist"}</Btn>}
+        {isRevealed
+          ? <span style={{ fontFamily: F.mono, fontSize: 12, color: T.emerald, alignSelf: "center" }}>Interview requested</span>
+          : <Btn small onClick={() => onRequestInterview({ ...c, monthlyUsd: Number(budget) })}>Request interview</Btn>}
+      </div>
     </div>
   </Card>;
 }
 
-function Search({ builders, pipeline, onShortlist, onRequestInterview }) {
+function Search({ builders, pipeline, onShortlist, onRequestInterview, saved, onToggleSave }) {
   const [need, setNeed] = useState("Backend engineer for a payments reconciliation service, fintech, Berlin team, async across time zones.");
   const [budget, setBudget] = useState("4500");
   const [ranked, setRanked] = useState(null); const [busy, setBusy] = useState(false);
@@ -1063,7 +1140,7 @@ function Search({ builders, pipeline, onShortlist, onRequestInterview }) {
     </Card>
     {ranked && <div style={{ marginTop: 18, display: "grid", gap: 14 }}>
       {ranked.length === 0 && <Card><p style={{ color: T.slate, fontSize: 14 }}>No builders in the network yet. Build a candidate profile first, then search.</p></Card>}
-      {ranked.map((c, i) => <SearchCard key={i} c={c} isRevealed={revealed(c.handle)} isShort={shortlisted(c.handle)} isIn={inPipeline(c.handle)} budget={budget} onShortlist={onShortlist} onRequestInterview={onRequestInterview} />)}
+      {ranked.map((c, i) => <SearchCard key={i} c={c} isRevealed={revealed(c.handle)} isShort={shortlisted(c.handle)} isIn={inPipeline(c.handle)} isSaved={saved.some(x => x.handle === c.handle)} budget={budget} onShortlist={onShortlist} onRequestInterview={onRequestInterview} onToggleSave={onToggleSave} />)}
     </div>}
   </div></Scroll>;
 }
