@@ -322,6 +322,77 @@ function Wallet({ builders, pipeline }) {
   </div></Scroll>;
 }
 
+// ---- Community Ecosystem (candidate). NO MODEL. Computed counters ----
+// Squads are a seeded list you can join; peer activity is read from the shared
+// builders store; the impact portfolio and Good Citizen Points are computed
+// counters with disclosed formulas (illustrative, real accounting is backend).
+const SQUADS = [
+  { id: "backend", name: "Backend Guild", focus: "Distributed systems, data, and reliability", members: 128 },
+  { id: "frontend", name: "Frontend Collective", focus: "Accessible, resilient interfaces on real networks", members: 96 },
+  { id: "data", name: "Data Engineering Circle", focus: "Pipelines, quality, and analytics across markets", members: 71 },
+  { id: "lagos", name: "Lagos Builders", focus: "Local meetups, mentorship, and referrals", members: 154 },
+];
+
+function Community({ builders, pipeline }) {
+  const me = builders.find(b => b.isYou);
+  const [joined, setJoined] = useState([]);
+
+  if (!me) return <Scroll><div style={{ maxWidth: 900, margin: "0 auto" }} className="rise">
+    <Eyebrow>Community Ecosystem</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 8px" }}>Grow with the network</h2>
+    <Card><p style={{ color: T.slate, fontSize: 14 }}>You are not in the network yet. Complete your assessment to join squads and start building your impact portfolio.</p></Card>
+  </div></Scroll>;
+
+  const engagements = ["shortlisted", "interviewing", "sow"].reduce((n, st) => n + (pipeline[st].some(x => x.handle === me.handle) ? 1 : 0), 0);
+  const contract = pipeline.sow.find(x => x.handle === me.handle);
+  const netMonthly = contract ? Math.round(contract.monthlyUsd * 0.70) : 0;
+  const localImpact = Math.round(netMonthly * 12 * 0.62); // illustrative annual local value retained
+  const gcp = me.profileStrength + joined.length * 40;
+  const peers = builders.filter(b => !b.isYou);
+  const activity = p => (p.profileStrength >= 85 ? "reached Top 1% tier" : p.profileStrength >= 70 ? "reached Gold tier" : "joined the network");
+  const Stat = ({ n, label }) => <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: "14px 16px" }}>
+    <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 24, color: T.emerald, lineHeight: 1 }}>{n}</div>
+    <div style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, marginTop: 4 }}>{label}</div>
+  </div>;
+
+  return <Scroll><div style={{ maxWidth: 900, margin: "0 auto" }} className="rise">
+    <Eyebrow>Community Ecosystem</Eyebrow>
+    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Grow with the network</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 18 }}>Join squads, see what peers are building, and track the impact you create.</p>
+
+    <Label>Your impact portfolio</Label>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginTop: 10 }}>
+      <Stat n={gcp} label="Good Citizen Points" /><Stat n={engagements} label="engagements" /><Stat n={usd(localImpact)} label="local impact / yr, illustrative" /><Stat n={joined.length} label="squads joined" />
+    </div>
+    <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11.5, color: T.slate }}>Good Citizen Points = profile strength {me.profileStrength} + 40 per squad joined. Impact figures are computed and illustrative; real impact accounting runs on the backend.</div>
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>{["SDG 8", "SDG 9", "SDG 17"].map(s => <span key={s} style={{ fontFamily: F.mono, fontSize: 11, color: T.emerald, border: `1px solid ${T.line}`, borderRadius: 4, padding: "2px 8px" }}>{s}</span>)}</div>
+
+    <div style={{ marginTop: 22 }}>
+      <Label>Fumana Squads</Label>
+      <div style={{ display: "grid", gap: 12, marginTop: 10 }}>
+        {SQUADS.map(sq => { const on = joined.includes(sq.id); return <Card key={sq.id} accent={on ? T.emerald : T.line}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <div><div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 16 }}>{sq.name}</div><div style={{ color: T.slate, fontSize: 13, marginTop: 3 }}>{sq.focus}</div><div style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, marginTop: 5 }}>{sq.members + (on ? 1 : 0)} members</div></div>
+            <Btn small kind={on ? "ghost" : "primary"} onClick={() => setJoined(j => on ? j.filter(x => x !== sq.id) : [...j, sq.id])}>{on ? "Joined" : "Join squad"}</Btn>
+          </div>
+        </Card>; })}
+      </div>
+    </div>
+
+    <div style={{ marginTop: 22 }}>
+      <Label>Peer activity</Label>
+      {peers.length === 0
+        ? <div style={{ marginTop: 10 }}><Card><p style={{ color: T.slate, fontSize: 14 }}>No peers in the network yet.</p></Card></div>
+        : <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+          {peers.map((p, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, padding: "11px 14px" }}>
+            <div style={{ fontSize: 14 }}><b>{p.handle}</b> <span style={{ color: T.slate }}>. {p.role} {activity(p)}</span></div>
+            {p.tier && <span style={{ fontFamily: F.mono, fontSize: 10.5, color: T.onAccent, background: p.tier.color, borderRadius: 5, padding: "3px 9px", whiteSpace: "nowrap" }}>{p.tier.name}</span>}
+          </div>)}
+        </div>}
+    </div>
+    <div style={{ height: 30 }} />
+  </div></Scroll>;
+}
+
 // Candidate Carbon nav. Growth Dashboard and Upskill are real; the rest are
 // honest stubs to be built in Phase 1+.
 const CAND_NAV = [
@@ -359,7 +430,7 @@ function CandidateApp({ addBuilder, builders, pipeline, exit }) {
     {screen === "upskill" && result && <Upskill result={result} points={points} setPoints={setPoints} />}
     {screen === "applications" && <Applications builders={builders} pipeline={pipeline} />}
     {screen === "wallet" && <Wallet builders={builders} pipeline={pipeline} />}
-    {screen === "community" && <Stub eyebrow="Candidate" title="Community Ecosystem" line="Fumana Squads, peer activity, and your impact portfolio." />}
+    {screen === "community" && <Community builders={builders} pipeline={pipeline} />}
     {screen === "alchemist" && <Stub eyebrow="Candidate" title="Experience Alchemist" line="Turn your raw experience into recruiter-ready outcomes, with save and copy." />}
     {screen === "settings" && <Stub eyebrow="Candidate" title="Settings and Comm" line="Language, notification channels, two-factor, and your data vault." />}
   </Shell>;
