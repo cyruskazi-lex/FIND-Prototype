@@ -110,6 +110,15 @@ const SEED_BUILDERS = [
   { handle: "FB-7731", role: "Data engineer", summary: "Built ETL and reporting pipelines across three African markets, owning data quality end to end.", skills: ["Airflow", "SQL", "Python"], profileStrength: 76, tier: tierOf(76) },
 ];
 
+// Shared FIND Squads store. Lives at the app root so the employer side can read
+// squads later. `joined` and `members` update when the candidate joins/forms.
+const SEED_SQUADS = [
+  { id: "backend", name: "Backend Guild", focus: "Distributed systems, data, and reliability", pitch: "Battle-tested backend builders who ship resilient systems on real infrastructure.", members: 128, joined: false },
+  { id: "frontend", name: "Frontend Collective", focus: "Accessible, resilient interfaces on real networks", pitch: "Frontend engineers who make fast, accessible UIs that hold up on low bandwidth.", members: 96, joined: false },
+  { id: "data", name: "Data Engineering Circle", focus: "Pipelines, quality, and analytics across markets", pitch: "Data engineers who own quality end to end across African markets.", members: 71, joined: false },
+  { id: "lagos", name: "Lagos Builders", focus: "Local meetups, mentorship, and referrals", pitch: "A Lagos crew that mentors, meets up, and refers each other into great roles.", members: 154, joined: false },
+];
+
 // ---- shared ui ----
 function Btn({ children, onClick, kind, disabled, full, small }) {
   const s = { primary: { background: T.emerald, color: T.onAccent, border: "none" }, ghost: { background: "transparent", color: T.ink, border: `1px solid ${T.line}` }, sso: { background: T.surface, color: T.ink, border: `1px solid ${T.line}` } }[kind || "primary"];
@@ -302,16 +311,11 @@ function Wallet({ builders, pipeline }) {
 // Squads are a seeded list you can join; peer activity is read from the shared
 // builders store; the impact portfolio and Good Citizen Points are computed
 // counters with disclosed formulas (illustrative, real accounting is backend).
-const SQUADS = [
-  { id: "backend", name: "Backend Guild", focus: "Distributed systems, data, and reliability", members: 128 },
-  { id: "frontend", name: "Frontend Collective", focus: "Accessible, resilient interfaces on real networks", members: 96 },
-  { id: "data", name: "Data Engineering Circle", focus: "Pipelines, quality, and analytics across markets", members: 71 },
-  { id: "lagos", name: "Lagos Builders", focus: "Local meetups, mentorship, and referrals", members: 154 },
-];
-
-function Community({ builders, pipeline }) {
+function Community({ builders, pipeline, squads, onJoin, onLeave, onForm }) {
   const me = builders.find(b => b.isYou);
-  const [joined, setJoined] = useState([]);
+  const [nsName, setNsName] = useState("");
+  const [nsFocus, setNsFocus] = useState("");
+  const [nsPitch, setNsPitch] = useState("");
 
   if (!me) return <Scroll><div style={{ maxWidth: 900, margin: "0 auto" }} className="rise">
     <Eyebrow>Community Ecosystem</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 8px" }}>Grow with the network</h2>
@@ -322,7 +326,11 @@ function Community({ builders, pipeline }) {
   const contract = pipeline.sow.find(x => x.handle === me.handle);
   const netMonthly = contract ? Math.round(contract.monthlyUsd * 0.70) : 0;
   const localImpact = Math.round(netMonthly * 12 * 0.62); // illustrative annual local value retained
-  const gcp = me.profileStrength + joined.length * 40;
+  const joinedCount = squads.filter(s => s.joined).length;
+  const gcp = me.profileStrength + joinedCount * 40;
+  const ctrl = { width: "100%", background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11, fontSize: 14 };
+  const canForm = nsName.trim() && nsFocus.trim();
+  const form = () => { if (!canForm) return; onForm({ name: nsName.trim(), focus: nsFocus.trim(), pitch: nsPitch.trim() }); setNsName(""); setNsFocus(""); setNsPitch(""); };
   const peers = builders.filter(b => !b.isYou);
   const activity = p => (p.profileStrength >= 85 ? "reached Top 1% tier" : p.profileStrength >= 70 ? "reached Gold tier" : "joined the network");
   const Stat = ({ n, label }) => <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: "14px 16px" }}>
@@ -337,7 +345,7 @@ function Community({ builders, pipeline }) {
 
     <Label>Your impact portfolio</Label>
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginTop: 10 }}>
-      <Stat n={gcp} label="Good Citizen Points" /><Stat n={engagements} label="engagements" /><Stat n={usd(localImpact)} label="local impact / yr, illustrative" /><Stat n={joined.length} label="squads joined" />
+      <Stat n={gcp} label="Good Citizen Points" /><Stat n={engagements} label="engagements" /><Stat n={usd(localImpact)} label="local impact / yr, illustrative" /><Stat n={joinedCount} label="squads joined" />
     </div>
     <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11.5, color: T.slate }}>Good Citizen Points = profile strength {me.profileStrength} + 40 per squad joined. Impact figures are computed and illustrative; real impact accounting runs on the backend.</div>
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>{["SDG 8", "SDG 9", "SDG 17"].map(s => <span key={s} style={{ fontFamily: F.mono, fontSize: 11, color: T.emerald, border: `1px solid ${T.line}`, borderRadius: 4, padding: "2px 8px" }}>{s}</span>)}</div>
@@ -345,13 +353,27 @@ function Community({ builders, pipeline }) {
     <div style={{ marginTop: 22 }}>
       <Label>Fumana Squads</Label>
       <div style={{ display: "grid", gap: 12, marginTop: 10 }}>
-        {SQUADS.map(sq => { const on = joined.includes(sq.id); return <Card key={sq.id} accent={on ? T.emerald : T.line}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <div><div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 16 }}>{sq.name}</div><div style={{ color: T.slate, fontSize: 13, marginTop: 3 }}>{sq.focus}</div><div style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, marginTop: 5 }}>{sq.members + (on ? 1 : 0)} members</div></div>
-            <Btn small kind={on ? "ghost" : "primary"} onClick={() => setJoined(j => on ? j.filter(x => x !== sq.id) : [...j, sq.id])}>{on ? "Joined" : "Join squad"}</Btn>
+        {squads.map(sq => <Card key={sq.id} accent={sq.joined ? T.emerald : T.line}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 16 }}>{sq.name}</div>
+              <div style={{ color: T.slate, fontSize: 13, marginTop: 3 }}>{sq.focus}</div>
+              {sq.pitch && <div style={{ fontSize: 13.5, marginTop: 8, borderLeft: `3px solid ${T.line}`, paddingLeft: 10, fontStyle: "italic" }}>{sq.pitch}</div>}
+              <div style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, marginTop: 8 }}>{sq.members} member{sq.members === 1 ? "" : "s"}</div>
+            </div>
+            <Btn small kind={sq.joined ? "ghost" : "primary"} onClick={() => (sq.joined ? onLeave(sq.id) : onJoin(sq.id))}>{sq.joined ? "Joined" : "Join squad"}</Btn>
           </div>
-        </Card>; })}
+        </Card>)}
       </div>
+      <div style={{ marginTop: 14 }}><Card>
+        <Label>Form a new squad</Label>
+        <div className="row2" style={{ marginTop: 10 }}>
+          <input value={nsName} onChange={e => setNsName(e.target.value)} placeholder="Squad name" style={ctrl} />
+          <input value={nsFocus} onChange={e => setNsFocus(e.target.value)} placeholder="Focus area" style={ctrl} />
+        </div>
+        <input value={nsPitch} onChange={e => setNsPitch(e.target.value)} placeholder="Shared pitch line (optional)" style={{ ...ctrl, marginTop: 10 }} />
+        <div style={{ marginTop: 12 }}><Btn small disabled={!canForm} onClick={form}>Form squad</Btn><Hint show={!canForm}>Add a name and a focus area to form a squad.</Hint></div>
+      </Card></div>
     </div>
 
     <div style={{ marginTop: 22 }}>
@@ -654,7 +676,7 @@ function NegotiationCoach({ profile, builders, pipeline }) {
   </div></Scroll>;
 }
 
-function CandidateApp({ addBuilder, builders, pipeline, exit, toRole }) {
+function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leaveSquad, formSquad, exit, toRole }) {
   const [screen, setScreen] = useState("signin");
   const [profile, setProfile] = useState({ name: "", role: "", city: "", experience: "" });
   const [result, setResult] = useState(null);
@@ -686,7 +708,7 @@ function CandidateApp({ addBuilder, builders, pipeline, exit, toRole }) {
     {screen === "wallet" && <Wallet builders={builders} pipeline={pipeline} />}
     {screen === "coach" && <NegotiationCoach profile={profile} builders={builders} pipeline={pipeline} />}
     {screen === "worth" && <GlobalWorth profile={profile} builders={builders} pipeline={pipeline} />}
-    {screen === "community" && <Community builders={builders} pipeline={pipeline} />}
+    {screen === "community" && <Community builders={builders} pipeline={pipeline} squads={squads} onJoin={joinSquad} onLeave={leaveSquad} onForm={formSquad} />}
     {screen === "alchemist" && <ExperienceAlchemist profile={profile} />}
     {screen === "settings" && <Settings builders={builders} />}
   </Shell>;
@@ -1534,7 +1556,11 @@ export default function App() {
   const [view, setView] = useState("landing");
   const [builders, setBuilders] = useState(SEED_BUILDERS);
   const [pipeline, setPipeline] = useState({ shortlisted: [], interviewing: [], sow: [] });
+  const [squads, setSquads] = useState(SEED_SQUADS);
   const addBuilder = b => setBuilders(prev => [b, ...prev]);
+  const joinSquad = id => setSquads(s => s.map(x => x.id === id ? { ...x, joined: true, members: x.members + 1 } : x));
+  const leaveSquad = id => setSquads(s => s.map(x => x.id === id ? { ...x, joined: false, members: Math.max(0, x.members - 1) } : x));
+  const formSquad = ({ name, focus, pitch }) => setSquads(s => [{ id: "sq-" + Math.random().toString(36).slice(2, 8), name, focus, pitch, members: 1, joined: true }, ...s]);
   const toRole = () => setView("role");
   // The marketing views (landing, role selection) are Tailwind-styled and use
   // IBM Plex Sans as their base font, separate from the inline-styled app shell.
@@ -1544,7 +1570,7 @@ export default function App() {
     <ToastProvider>
       {view === "landing" && <div style={marketingFont}><LandingPage onSignInClick={toRole} /></div>}
       {view === "role" && <div style={marketingFont}><RoleSelectionPage onRoleSelect={r => setView(r === "builder" ? "candidate" : "employer")} onBack={() => setView("landing")} /></div>}
-      {view === "candidate" && <CandidateApp addBuilder={addBuilder} builders={builders} pipeline={pipeline} exit={() => setView("landing")} toRole={toRole} />}
+      {view === "candidate" && <CandidateApp addBuilder={addBuilder} builders={builders} pipeline={pipeline} squads={squads} joinSquad={joinSquad} leaveSquad={leaveSquad} formSquad={formSquad} exit={() => setView("landing")} toRole={toRole} />}
       {view === "employer" && <EmployerApp builders={builders} pipeline={pipeline} setPipeline={setPipeline} exit={() => setView("landing")} toRole={toRole} />}
     </ToastProvider>
   </div>;
