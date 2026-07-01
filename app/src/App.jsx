@@ -409,7 +409,58 @@ const Toggle = ({ on, onClick, label }) => <button type="button" role="switch" a
   <span aria-hidden="true" style={{ position: "absolute", top: 2, left: on ? 22 : 2, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left .15s" }} />
 </button>;
 
-function Settings({ builders }) {
+// ---- Fairness posture (both portals). NO MODEL ----
+// A dedicated, honest page: what we do to reduce bias, the known limits, and
+// what a candidate can do if an assessment felt unfair. No claim we cannot
+// stand behind; where something is unsolved, it says so plainly.
+function FairnessPosture({ onBack }) {
+  const ul = { listStyle: "none", display: "grid", gap: 10, marginTop: 12, fontSize: 14 };
+  return <Scroll><div style={{ maxWidth: 760, margin: "0 auto" }} className="rise">
+    <Back onClick={onBack} />
+    <Eyebrow>Fairness</Eyebrow>
+    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "8px 0 4px" }}>How Fumana guards fairness, and its limits</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 18 }}>An honest account: what we do to reduce bias, what we have not solved, and what you can do if you think an assessment was unfair.</p>
+
+    <Card>
+      <Label>What we do to guard against bias</Label>
+      <ul style={ul}>
+        <Li>Identity is shielded. Your name, photo, location, and gender are hidden from employers until you accept an interview.</Li>
+        <Li>Every score is tied to evidence you can see: the experience or interview answer it was drawn from, plus a written rationale.</Li>
+        <Li>The scoring formula is disclosed. Profile Strength is a fixed weighted average of the dimensions, shown on your dashboard.</Li>
+        <Li>The score bands are fixed and identical for everyone. No score is adjusted for a person or their background.</Li>
+        <Li>You can decline AI assessment and ask for a human reviewer instead.</Li>
+        <Li>A text-only interview path exists, so you are not required to speak on camera.</Li>
+      </ul>
+    </Card>
+    <div style={{ height: 14 }} />
+
+    <Card accent={T.brass}>
+      <Label>The known limits</Label>
+      <ul style={ul}>
+        <Li>Scoring spoken English can disadvantage non-native speakers and people with speech differences. The text path helps but is not a full fix yet.</Li>
+        <Li>Language models carry bias. We work to reduce it; we do not claim to have eliminated it.</Li>
+        <Li>A rationale is not a guarantee. The model can be wrong, and a score is a starting point, not a verdict.</Li>
+        <Li>Fairness and legal standards differ across jurisdictions. Those questions go to counsel, not to marketing copy, and are not fully solved here.</Li>
+      </ul>
+      <p style={{ fontFamily: F.mono, fontSize: 11.5, color: T.slate, marginTop: 12 }}>Where something is not solved, we say so. This page changes as the work does.</p>
+    </Card>
+    <div style={{ height: 14 }} />
+
+    <Card>
+      <Label>If you believe an assessment was unfair</Label>
+      <ul style={ul}>
+        <Li>Retake the interview. Scores are a starting point, so you can try again.</Li>
+        <Li>Export or delete your assessment and data from your Settings data vault.</Li>
+        <Li>Contest a specific dimension and say why. Arriving in the trust and safety phase.</Li>
+        <Li>Request a human to review any automated decision. Arriving in the trust and safety phase.</Li>
+      </ul>
+      <div style={{ marginTop: 12, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Contest and human review are part of the trust and safety phase and are not live yet. Retake and data export or delete are available now.</div>
+    </Card>
+    <div style={{ height: 30 }} />
+  </div></Scroll>;
+}
+
+function Settings({ builders, onFairness }) {
   const me = builders.find(b => b.isYou);
   const toast = useToast();
   const [lang, setLang] = useState("English");
@@ -469,6 +520,13 @@ function Settings({ builders }) {
       </div>}
       {deleted && <div style={{ marginTop: 14, background: T.paper, border: `1px solid ${T.line}`, borderRadius: 8, padding: 14, fontSize: 13.5, color: T.slate }}>Deletion requested. A reviewer will confirm and your profile is withdrawn from the network. Stubbed queue in this prototype.</div>}
       <div style={{ marginTop: 12, fontFamily: F.mono, fontSize: 11, color: T.slate }}>This is the entry point to your data rights. Contest, human review, and the full data-rights flow arrive in the trust and safety phase.</div>
+    </Card>
+    <div style={{ height: 14 }} />
+
+    <Card>
+      <Label>Fairness</Label>
+      <p style={{ fontSize: 14, color: T.slate, margin: "8px 0 12px" }}>An honest account of how the assessment guards against bias, its known limits, and what you can do if it felt unfair.</p>
+      <Btn kind="ghost" small onClick={onFairness}>How you are assessed, and its limits</Btn>
     </Card>
     <div style={{ height: 30 }} />
   </div></Scroll>;
@@ -689,7 +747,7 @@ function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leave
   const [points, setPoints] = useState(0);
   const [published, setPublished] = useState(false);
   const toast = useToast();
-  const inApp = CAND_NAV.some(([k]) => k === screen);
+  const inApp = CAND_NAV.some(([k]) => k === screen) || screen === "fairness";
 
   function finish(r) {
     setResult(r); setPoints(120);
@@ -716,7 +774,8 @@ function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leave
     {screen === "worth" && <GlobalWorth profile={profile} builders={builders} pipeline={pipeline} />}
     {screen === "community" && <Community builders={builders} pipeline={pipeline} squads={squads} onJoin={joinSquad} onLeave={leaveSquad} onForm={formSquad} />}
     {screen === "alchemist" && <ExperienceAlchemist profile={profile} />}
-    {screen === "settings" && <Settings builders={builders} />}
+    {screen === "settings" && <Settings builders={builders} onFairness={() => setScreen("fairness")} />}
+    {screen === "fairness" && <FairnessPosture onBack={() => setScreen("settings")} />}
   </Shell>;
 }
 
@@ -1210,7 +1269,8 @@ function EmployerApp({ builders, pipeline, setPipeline, exit, toRole }) {
     {inApp && tab === "investments" && <Finance pipeline={pipeline} />}
     {inApp && tab === "saved" && <SavedBuilders saved={saved} pipeline={pipeline} onToggleSave={toggleSave} />}
     {inApp && tab === "team" && <MyTeam pipeline={pipeline} />}
-    {inApp && tab === "trust" && <TrustSafety pipeline={pipeline} />}
+    {inApp && tab === "trust" && <TrustSafety pipeline={pipeline} onFairness={() => setTab("fairness")} />}
+    {inApp && tab === "fairness" && <FairnessPosture onBack={() => setTab("trust")} />}
     {inApp && tab === "account" && <Account company={company} setCompany={setCompany} />}
   </Shell>;
 }
@@ -1393,7 +1453,7 @@ const COMPLIANCE_CHECKLIST = [
   { label: "Tax remittance active", state: "done" },
 ];
 
-function TrustSafety({ pipeline }) {
+function TrustSafety({ pipeline, onFairness }) {
   const team = pipeline.sow;
   return <Scroll><div style={{ maxWidth: 860, margin: "0 auto" }} className="rise">
     <Eyebrow>Trust and Safety</Eyebrow>
@@ -1427,6 +1487,12 @@ function TrustSafety({ pipeline }) {
       </div>}
 
     <div style={{ marginTop: 16, fontFamily: F.mono, fontSize: 11, color: T.slate }}>These statuses are stubbed in this prototype. Real registration, remittance, IP assignment, and signing run on the backend, per jurisdiction. No legal specifics are asserted here.</div>
+
+    <div style={{ marginTop: 18 }}><Card>
+      <Label>Fairness</Label>
+      <p style={{ fontSize: 14, color: T.slate, margin: "8px 0 12px" }}>How the assessment guards against bias, its known limits, and what a builder can do if it felt unfair. The same page builders see.</p>
+      <Btn kind="ghost" small onClick={onFairness}>Read the fairness posture</Btn>
+    </Card></div>
     <div style={{ height: 30 }} />
   </div></Scroll>;
 }
