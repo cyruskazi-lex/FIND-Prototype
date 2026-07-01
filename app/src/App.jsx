@@ -6,6 +6,7 @@ import q2Video from "./assets/zuri/zuri-q2.mp4";
 import q3Video from "./assets/zuri/zuri-q3.mp4";
 import q4Video from "./assets/zuri/zuri-q4.mp4";
 import q5Video from "./assets/zuri/zuri-q5.mp4";
+import { LandingPage, RoleSelectionPage, AuthFormPage } from "./marketing";
 
 // ============================================================
 // Fumana platform. One application, one shared builder network.
@@ -21,7 +22,7 @@ const T = {
 };
 const F = { disp: "'Hanken Grotesk', sans-serif", body: "'Inter', sans-serif", mono: "'IBM Plex Mono', monospace" };
 const FONTS = `
-@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 *{box-sizing:border-box}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
@@ -144,31 +145,6 @@ function ToastProvider({ children }) {
   </ToastCtx.Provider>;
 }
 
-// ============================================================
-// LANDING
-// ============================================================
-function Landing({ go }) {
-  return <Centered><div style={{ width: "100%", maxWidth: 760 }} className="rise">
-    <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 38, letterSpacing: 4 }}>FUMANA</div>
-    <p style={{ color: T.slate, fontSize: 16, marginTop: 8, maxWidth: 560 }}>The talent clearing house for African engineering. One network: builders prove their worth on one side, enterprises hire it on the other, and the impact is settled in the open.</p>
-    <div className="doors" style={{ marginTop: 26 }}>
-      <Card accent={T.line}>
-        <Label>I am a builder</Label>
-        <h3 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 20, margin: "8px 0 6px" }}>Build a profile employers trust</h3>
-        <p style={{ color: T.slate, fontSize: 14, marginBottom: 14 }}>Sign in, take the AI interview, and join the network with your identity shielded until you choose to reveal it.</p>
-        <Btn onClick={() => go("candidate")}>Enter as a builder</Btn>
-      </Card>
-      <Card accent={T.line}>
-        <Label>I am an employer</Label>
-        <h3 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 20, margin: "8px 0 6px" }}>Hire verified talent</h3>
-        <p style={{ color: T.slate, fontSize: 14, marginBottom: 14 }}>Search by evidence, see bias-shielded matches, sign an SOW with liability carried for you, and see where every dollar goes.</p>
-        <Btn onClick={() => go("employer")}>Enter as an employer</Btn>
-      </Card>
-    </div>
-    <div style={{ marginTop: 18, fontFamily: F.mono, fontSize: 12, color: T.slate }}>Tip: build a profile first, then enter as an employer and search. You will find yourself in the results.</div>
-    <div style={{ marginTop: 22, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Powered by Telos. Designed by Lexington Advisory Group.</div>
-  </div></Centered>;
-}
 
 // ============================================================
 // CANDIDATE SIDE
@@ -678,7 +654,7 @@ function NegotiationCoach({ profile, builders, pipeline }) {
   </div></Scroll>;
 }
 
-function CandidateApp({ addBuilder, builders, pipeline, exit }) {
+function CandidateApp({ addBuilder, builders, pipeline, exit, toRole }) {
   const [screen, setScreen] = useState("signin");
   const [profile, setProfile] = useState({ name: "", role: "", city: "", experience: "" });
   const [result, setResult] = useState(null);
@@ -698,7 +674,7 @@ function CandidateApp({ addBuilder, builders, pipeline, exit }) {
   }
 
   return <Shell role="candidate" exit={exit} nav={inApp ? CAND_NAV : null} active={screen} onNav={setScreen} showZuri={!NO_DOCK_SCREENS.includes(screen)}>
-    {screen === "signin" && <SignIn onNext={() => setScreen("consent")} who="builder" />}
+    {screen === "signin" && <AuthFormPage role="builder" onBack={toRole} onAuthenticated={() => setScreen("consent")} />}
     {screen === "consent" && <Consent onNext={() => setScreen("onboarding")} onBack={() => setScreen("signin")} />}
     {screen === "onboarding" && <Onboarding profile={profile} setProfile={setProfile} onNext={() => setScreen("assessinfo")} onBack={() => setScreen("consent")} />}
     {screen === "assessinfo" && <AssessInfo onOptIn={() => setScreen("interview")} onOptOut={() => setScreen("humanreview")} onBack={() => setScreen("onboarding")} />}
@@ -714,19 +690,6 @@ function CandidateApp({ addBuilder, builders, pipeline, exit }) {
     {screen === "alchemist" && <ExperienceAlchemist profile={profile} />}
     {screen === "settings" && <Settings builders={builders} />}
   </Shell>;
-}
-
-function SignIn({ onNext, who }) {
-  return <Centered><div style={{ width: "100%", maxWidth: 420 }} className="rise">
-    <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 28, letterSpacing: 3 }}>FUMANA</div>
-    <div style={{ color: T.slate, marginTop: 6, fontSize: 15 }}>{who === "builder" ? "Build a profile employers can trust on sight." : "Engage verified African talent with the risk carried for you."}</div>
-    <div style={{ marginTop: 24, display: "grid", gap: 10 }}>
-      <Btn kind="sso" full onClick={onNext}>Continue with Google{who === "builder" ? "" : " Workspace"}</Btn>
-      <Btn kind="sso" full onClick={onNext}>Continue with Microsoft{who === "builder" ? "" : " Entra ID"}</Btn>
-      {who === "builder" && <><div style={{ display: "flex", alignItems: "center", gap: 12, color: T.slate, fontSize: 12, margin: "6px 0" }}><span style={{ flex: 1, height: 1, background: T.line }} />or<span style={{ flex: 1, height: 1, background: T.line }} /></div><Btn full onClick={onNext}>Sign up with email</Btn></>}
-    </div>
-    <div style={{ marginTop: 16, fontFamily: F.mono, fontSize: 11, color: T.slate, lineHeight: 1.6 }}>SSO is wired at the UI layer for this prototype. Real OIDC and SAML are a backend step.</div>
-  </div></Centered>;
 }
 
 function Consent({ onNext, onBack }) {
@@ -1078,8 +1041,8 @@ const Badge = ({ on, label }) => <span style={{ fontFamily: F.mono, fontSize: 12
 // EMPLOYER SIDE
 // ============================================================
 // ---- Employer onboarding (welcome -> auth -> company-info -> alignment -> app) ----
-// Same shell, palette, and components as the candidate portal. Auth reuses
-// <SignIn who="employer">. The Zuri dock is gated off until the app (showZuri).
+// Same shell and palette as the candidate portal. Auth uses the Tailwind
+// AuthFormPage (Google + LinkedIn). The Zuri dock is gated off until the app.
 
 // Employer sidebar/nav. Dashboard is real; Engage Experts, Talent Pipeline, and
 // Investments reuse the existing working screens; the rest are honest stubs.
@@ -1095,8 +1058,9 @@ const EMP_PLEDGES = [
   { key: "noMonitor", title: "No covert monitoring", desc: "I will not covertly monitor or surveil the builder. Any work tracking is agreed and visible to them." },
 ];
 
-function EmpWelcome({ onNext }) {
+function EmpWelcome({ onNext, onBack }) {
   return <Centered><div style={{ width: "100%", maxWidth: 620 }} className="rise">
+    {onBack && <Back onClick={onBack} />}
     <Eyebrow>For employers</Eyebrow>
     <h1 style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 34, letterSpacing: 0.3, lineHeight: 1.12, margin: "8px 0 10px" }}>Hire verified African talent with the risk carried for you</h1>
     <p style={{ color: T.slate, fontSize: 16, maxWidth: 520, marginBottom: 26 }}>Search by evidence, not keywords, with identity shielded until you commit.</p>
@@ -1168,7 +1132,7 @@ const Stub = ({ eyebrow, title, line }) => <Scroll><div style={{ maxWidth: 760, 
   <Card><p style={{ color: T.slate, fontSize: 14 }}>{line}</p><div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Coming next.</div></Card>
 </div></Scroll>;
 
-function EmployerApp({ builders, pipeline, setPipeline, exit }) {
+function EmployerApp({ builders, pipeline, setPipeline, exit, toRole }) {
   const [screen, setScreen] = useState("welcome");
   const [tab, setTab] = useState("dashboard");
   const [company, setCompany] = useState({ name: "", domain: "", industry: "", size: "", country: "", hiringFor: "" });
@@ -1193,8 +1157,8 @@ function EmployerApp({ builders, pipeline, setPipeline, exit }) {
   const [saved, setSaved] = useState([]);
   const toggleSave = c => setSaved(s => s.some(x => x.handle === c.handle) ? s.filter(x => x.handle !== c.handle) : [...s, c]);
   return <Shell role="employer" exit={exit} nav={inApp ? EMP_NAV : null} active={tab} onNav={setTab} showZuri={inApp}>
-    {screen === "welcome" && <EmpWelcome onNext={() => setScreen("auth")} />}
-    {screen === "auth" && <SignIn onNext={() => setScreen("company-info")} who="employer" />}
+    {screen === "welcome" && <EmpWelcome onNext={() => setScreen("auth")} onBack={toRole} />}
+    {screen === "auth" && <AuthFormPage role="employer" onBack={() => setScreen("welcome")} onAuthenticated={() => setScreen("company-info")} />}
     {screen === "company-info" && <EmpCompanyInfo company={company} setCompany={setCompany} onNext={() => setScreen("alignment")} onBack={() => setScreen("auth")} />}
     {screen === "alignment" && <EmpAlignment onEnter={() => { setScreen("app"); setTab("dashboard"); }} onBack={() => setScreen("company-info")} />}
     {inApp && tab === "dashboard" && <EmpDashboard company={company} onEngage={() => setTab("engage")} />}
@@ -1571,12 +1535,17 @@ export default function App() {
   const [builders, setBuilders] = useState(SEED_BUILDERS);
   const [pipeline, setPipeline] = useState({ shortlisted: [], interviewing: [], sow: [] });
   const addBuilder = b => setBuilders(prev => [b, ...prev]);
+  const toRole = () => setView("role");
+  // The marketing views (landing, role selection) are Tailwind-styled and use
+  // IBM Plex Sans as their base font, separate from the inline-styled app shell.
+  const marketingFont = { fontFamily: "'IBM Plex Sans', sans-serif" };
   return <div style={{ background: T.paper, minHeight: "100vh", color: T.ink, fontFamily: F.body }}>
     <style>{FONTS}</style>
     <ToastProvider>
-      {view === "landing" && <div style={{ minHeight: "100vh" }}><Landing go={setView} /></div>}
-      {view === "candidate" && <CandidateApp addBuilder={addBuilder} builders={builders} pipeline={pipeline} exit={() => setView("landing")} />}
-      {view === "employer" && <EmployerApp builders={builders} pipeline={pipeline} setPipeline={setPipeline} exit={() => setView("landing")} />}
+      {view === "landing" && <div style={marketingFont}><LandingPage onSignInClick={toRole} /></div>}
+      {view === "role" && <div style={marketingFont}><RoleSelectionPage onRoleSelect={r => setView(r === "builder" ? "candidate" : "employer")} onBack={() => setView("landing")} /></div>}
+      {view === "candidate" && <CandidateApp addBuilder={addBuilder} builders={builders} pipeline={pipeline} exit={() => setView("landing")} toRole={toRole} />}
+      {view === "employer" && <EmployerApp builders={builders} pipeline={pipeline} setPipeline={setPipeline} exit={() => setView("landing")} toRole={toRole} />}
     </ToastProvider>
   </div>;
 }
