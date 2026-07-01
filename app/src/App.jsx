@@ -474,9 +474,75 @@ function Settings({ builders }) {
 // honest stubs to be built in Phase 1+.
 const CAND_NAV = [
   ["dashboard", "Growth Dashboard"], ["applications", "Applications and Hub"], ["wallet", "Wallet and Escrow"],
-  ["community", "Community Ecosystem"], ["alchemist", "Experience Alchemist"], ["upskill", "Upskill and Training"],
-  ["settings", "Settings and Comm"],
+  ["coach", "Negotiation Coach"], ["community", "Community Ecosystem"], ["alchemist", "Experience Alchemist"],
+  ["upskill", "Upskill and Training"], ["settings", "Settings and Comm"],
 ];
+// ---- Negotiation Coach (candidate). NEEDS MODEL ----
+// Zuri helps a builder think through an offer: an illustrative pay band for the
+// role and region, what to ask for, and how to phrase it. Routes through the
+// /api/claude proxy; inert (a clear waiting state) until a provider is set.
+// The pay band is explicitly the model's illustrative guidance, not a quote.
+function NegotiationCoach({ profile, builders, pipeline }) {
+  const me = builders.find(b => b.isYou);
+  const activeOffer = me ? pipeline.sow.find(x => x.handle === me.handle) : null;
+  const [role, setRole] = useState(profile.role || (me && me.role) || "");
+  const [region, setRegion] = useState(profile.city || "");
+  const [offer, setOffer] = useState(activeOffer ? String(activeOffer.monthlyUsd) : "");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [guide, setGuide] = useState(null);
+  const ready = role.trim() && Number(offer) > 0;
+
+  async function coach() {
+    setBusy(true); setErr(""); setGuide(null);
+    try {
+      const sys = "You are Zuri, a warm, honest negotiation coach for a builder on Fumana. Help them think through a job offer. Given their role, region, and the monthly figure they are considering, provide an illustrative monthly pay band (low, mid, high) in USD for that role and region, two or three concrete things to ask for, and one sentence they can say to open the negotiation. Warm in manner, honest in substance. No hype, no em dashes. These are illustrative guidance, not quotes or guarantees. Return ONLY JSON, no fences. Shape: {\"band\":{\"low\":number,\"mid\":number,\"high\":number},\"askFor\":[string],\"phrasing\":string,\"note\":string}.";
+      const out = await callClaude({ system: sys, messages: [{ role: "user", content: `Role: ${role}. Region: ${region || "not specified"}. Monthly figure they are considering: ${offer} USD.` }], expectJson: true });
+      setGuide(out);
+    } catch (e) {
+      setErr(String(e).includes("501") ? "config" : "fail");
+    }
+    setBusy(false);
+  }
+
+  return <Scroll><div style={{ maxWidth: 760, margin: "0 auto" }} className="rise">
+    <Eyebrow>Negotiation Coach</Eyebrow>
+    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Think through your offer with Zuri</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 18 }}>Zuri helps you see the pay band for your role and region, what to ask for, and how to phrase it. Guidance is illustrative, not a quote.</p>
+    <Card>
+      <div className="row2">
+        <Field label="Role" value={role} onChange={setRole} placeholder="Backend engineer" />
+        <Field label="Region" value={region} onChange={setRegion} placeholder="Lagos, Nigeria" />
+      </div>
+      <Field label="Monthly figure you are considering, USD" value={offer} onChange={v => setOffer(v.replace(/[^0-9]/g, ""))} placeholder="4500" />
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 4 }}>{busy ? <Spinner label="Zuri is thinking it through..." /> : <Btn disabled={!ready} onClick={coach}>Coach me</Btn>}<Hint show={!ready && !busy}>Add your role and the monthly figure to continue.</Hint></div>
+    </Card>
+
+    {err === "config" && <div style={{ marginTop: 16 }}><Card accent={T.brass}><Label>Coach is ready, waiting on a provider</Label><p style={{ fontSize: 14, color: T.slate, marginTop: 8 }}>Zuri's negotiation coach is built and wired through the model proxy. It lights up the moment a model provider is connected. Nothing else to change.</p></Card></div>}
+    {err === "fail" && <div style={{ marginTop: 16, color: T.alert, fontSize: 14, display: "flex", gap: 12, alignItems: "center" }}>Zuri did not respond. <Btn kind="ghost" small onClick={coach}>Try again</Btn></div>}
+
+    {guide && <div style={{ marginTop: 16 }}><Card accent={T.emerald}>
+      <Label>Zuri's guidance . illustrative, not a quote</Label>
+      <div style={{ marginTop: 12 }}>
+        <div style={{ fontFamily: F.mono, fontSize: 12, color: T.slate }}>Illustrative pay band for {role}{region ? `, ${region}` : ""}</div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
+          <span style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 26, color: T.emerald }}>{usd(guide.band?.low || 0)} to {usd(guide.band?.high || 0)}</span>
+          <span style={{ fontFamily: F.mono, fontSize: 12, color: T.slate }}>midpoint {usd(guide.band?.mid || 0)} / month</span>
+        </div>
+      </div>
+      {Array.isArray(guide.askFor) && guide.askFor.length > 0 && <div style={{ marginTop: 16 }}><Label>What to ask for</Label>
+        <ul style={{ listStyle: "none", display: "grid", gap: 8, marginTop: 8 }}>{guide.askFor.map((a, i) => <li key={i} style={{ display: "flex", gap: 9, fontSize: 14 }}><span style={{ color: T.emerald }}>.</span><span>{a}</span></li>)}</ul>
+      </div>}
+      {guide.phrasing && <div style={{ marginTop: 16 }}><Label>How to phrase it</Label>
+        <div style={{ marginTop: 8, borderLeft: `3px solid ${T.emerald}`, paddingLeft: 12, fontSize: 14.5, lineHeight: 1.55, fontStyle: "italic" }}>{guide.phrasing}</div>
+      </div>}
+      {guide.note && <p style={{ marginTop: 14, fontSize: 13, color: T.slate }}>{guide.note}</p>}
+      <div style={{ marginTop: 12, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Illustrative guidance from Zuri, not a quote or guarantee. You decide.</div>
+    </Card></div>}
+    <div style={{ height: 30 }} />
+  </div></Scroll>;
+}
+
 function CandidateApp({ addBuilder, builders, pipeline, exit }) {
   const [screen, setScreen] = useState("signin");
   const [profile, setProfile] = useState({ name: "", role: "", city: "", experience: "" });
@@ -507,6 +573,7 @@ function CandidateApp({ addBuilder, builders, pipeline, exit }) {
     {screen === "upskill" && result && <Upskill result={result} points={points} setPoints={setPoints} />}
     {screen === "applications" && <Applications builders={builders} pipeline={pipeline} />}
     {screen === "wallet" && <Wallet builders={builders} pipeline={pipeline} />}
+    {screen === "coach" && <NegotiationCoach profile={profile} builders={builders} pipeline={pipeline} />}
     {screen === "community" && <Community builders={builders} pipeline={pipeline} />}
     {screen === "alchemist" && <Stub eyebrow="Candidate" title="Experience Alchemist" line="Turn your raw experience into recruiter-ready outcomes, with save and copy." />}
     {screen === "settings" && <Settings builders={builders} />}
