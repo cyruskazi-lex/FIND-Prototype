@@ -173,6 +173,79 @@ function Landing({ go }) {
 // ============================================================
 // CANDIDATE SIDE
 // ============================================================
+// ---- Applications and Hub (candidate). NO MODEL. Reads the shared store ----
+// On Fumana, employers come to the builder (bias-shielded search). This hub
+// reads the shared builders store (your own network entry) and the shared
+// employer pipeline (who has engaged you) and shows the engagement stage as the
+// application status. Matches = engaged at any stage; invites = interviewing or
+// beyond; offers = SOW.
+const APP_STAGE = {
+  shortlisted: { label: "Matched", color: T.emerald, note: "An employer shortlisted your profile. Your identity stays shielded until you accept an interview." },
+  interviewing: { label: "Interview invite", color: T.brass, note: "An employer has invited you to interview." },
+  sow: { label: "Offer", color: T.emerald, note: "An employer is preparing an offer and Statement of Work." },
+};
+const APP_STAGES = ["shortlisted", "interviewing", "sow"];
+
+function Applications({ builders, pipeline }) {
+  const me = builders.find(b => b.isYou);
+  const engagements = me
+    ? APP_STAGES.flatMap(stage => pipeline[stage].filter(x => x.handle === me.handle).map(entry => ({ stage, entry })))
+    : [];
+  const matches = engagements.length;
+  const invites = engagements.filter(e => e.stage === "interviewing" || e.stage === "sow").length;
+  const offers = engagements.filter(e => e.stage === "sow").length;
+  const Stat = ({ n, label }) => <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: "14px 16px" }}>
+    <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 26, color: T.emerald, lineHeight: 1 }}>{n}</div>
+    <div style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, marginTop: 4 }}>{label}</div>
+  </div>;
+  return <Scroll><div style={{ maxWidth: 860, margin: "0 auto" }} className="rise">
+    <Eyebrow>Applications and Hub</Eyebrow>
+    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Where you stand</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 18 }}>On Fumana, employers come to you. These are the roles matched to your profile and where each one stands. Your identity stays shielded until you accept an interview.</p>
+
+    {!me && <Card><p style={{ color: T.slate, fontSize: 14 }}>You are not in the network yet. Complete your assessment to join, get matched by employers, and track every engagement here.</p></Card>}
+
+    {me && <>
+      <Card accent={T.emerald}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <Label>Your profile in the network</Label>
+            <div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 18, marginTop: 6 }}>{me.handle} <span style={{ color: T.slate, fontWeight: 400, fontSize: 14 }}>. {me.role}</span></div>
+            <div style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, marginTop: 4 }}>identity shielded until you accept an interview</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 30, color: T.emerald, lineHeight: 1 }}>{me.profileStrength}</div>
+            <div><span style={{ display: "inline-block", marginTop: 6, fontFamily: F.mono, fontSize: 11, color: T.onAccent, background: me.tier.color, borderRadius: 5, padding: "3px 10px" }}>{me.tier.name} tier</span></div>
+          </div>
+        </div>
+      </Card>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginTop: 16 }}>
+        <Stat n={matches} label="matches" /><Stat n={invites} label="interview invites" /><Stat n={offers} label="offers" />
+      </div>
+
+      <div style={{ marginTop: 18 }}>
+        <Label>Your applications</Label>
+        {engagements.length === 0
+          ? <div style={{ marginTop: 10 }}><Card><p style={{ color: T.slate, fontSize: 14 }}>No employer engagements yet. Employers search the network by evidence. When one shortlists you, it appears here with its status.</p></Card></div>
+          : <div style={{ display: "grid", gap: 12, marginTop: 10 }}>
+            {engagements.map((e, i) => { const s = APP_STAGE[e.stage]; return <Card key={i} accent={s.color}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 15 }}>{e.entry.role}</div>
+                  <div style={{ fontSize: 13.5, color: T.slate, marginTop: 4 }}>{s.note}</div>
+                  {e.entry.monthlyUsd ? <div style={{ fontFamily: F.mono, fontSize: 12, color: T.slate, marginTop: 6 }}>{usd(e.entry.monthlyUsd)} / month</div> : null}
+                </div>
+                <span style={{ fontFamily: F.mono, fontSize: 11, color: T.onAccent, background: s.color, borderRadius: 5, padding: "4px 10px", whiteSpace: "nowrap" }}>{s.label}</span>
+              </div>
+            </Card>; })}
+          </div>}
+      </div>
+    </>}
+    <div style={{ height: 30 }} />
+  </div></Scroll>;
+}
+
 // Candidate Carbon nav. Growth Dashboard and Upskill are real; the rest are
 // honest stubs to be built in Phase 1+.
 const CAND_NAV = [
@@ -180,7 +253,7 @@ const CAND_NAV = [
   ["community", "Community Ecosystem"], ["alchemist", "Experience Alchemist"], ["upskill", "Upskill and Training"],
   ["settings", "Settings and Comm"],
 ];
-function CandidateApp({ addBuilder, exit }) {
+function CandidateApp({ addBuilder, builders, pipeline, exit }) {
   const [screen, setScreen] = useState("signin");
   const [profile, setProfile] = useState({ name: "", role: "", city: "", experience: "" });
   const [result, setResult] = useState(null);
@@ -208,7 +281,7 @@ function CandidateApp({ addBuilder, exit }) {
     {screen === "interview" && <Interview profile={profile} onBack={() => setScreen("assessinfo")} onComplete={finish} />}
     {screen === "dashboard" && result && <Dashboard profile={profile} result={result} onUpskill={() => setScreen("upskill")} published={published} />}
     {screen === "upskill" && result && <Upskill result={result} points={points} setPoints={setPoints} />}
-    {screen === "applications" && <Stub eyebrow="Candidate" title="Applications and Hub" line="Your matches, applied roles, interview invites, and status per application." />}
+    {screen === "applications" && <Applications builders={builders} pipeline={pipeline} />}
     {screen === "wallet" && <Stub eyebrow="Candidate" title="Wallet and Escrow" line="Balance, escrow held, and payout history. Real payments are a backend step." />}
     {screen === "community" && <Stub eyebrow="Candidate" title="Community Ecosystem" line="Fumana Squads, peer activity, and your impact portfolio." />}
     {screen === "alchemist" && <Stub eyebrow="Candidate" title="Experience Alchemist" line="Turn your raw experience into recruiter-ready outcomes, with save and copy." />}
@@ -828,7 +901,7 @@ export default function App() {
     <style>{FONTS}</style>
     <ToastProvider>
       {view === "landing" && <div style={{ minHeight: "100vh" }}><Landing go={setView} /></div>}
-      {view === "candidate" && <CandidateApp addBuilder={addBuilder} exit={() => setView("landing")} />}
+      {view === "candidate" && <CandidateApp addBuilder={addBuilder} builders={builders} pipeline={pipeline} exit={() => setView("landing")} />}
       {view === "employer" && <EmployerApp builders={builders} pipeline={pipeline} setPipeline={setPipeline} exit={() => setView("landing")} />}
     </ToastProvider>
   </div>;
