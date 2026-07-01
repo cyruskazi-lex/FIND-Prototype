@@ -1148,12 +1148,6 @@ function EmpDashboard({ company, onEngage }) {
   </div></Scroll>;
 }
 
-// Shared stub screen for nav items not yet built.
-const Stub = ({ eyebrow, title, line }) => <Scroll><div style={{ maxWidth: 760, margin: "0 auto" }} className="rise">
-  <Eyebrow>{eyebrow}</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 8px" }}>{title}</h2>
-  <Card><p style={{ color: T.slate, fontSize: 14 }}>{line}</p><div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Coming next.</div></Card>
-</div></Scroll>;
-
 function EmployerApp({ builders, pipeline, setPipeline, exit, toRole }) {
   const [screen, setScreen] = useState("welcome");
   const [tab, setTab] = useState("dashboard");
@@ -1190,7 +1184,7 @@ function EmployerApp({ builders, pipeline, setPipeline, exit, toRole }) {
     {inApp && tab === "investments" && <Finance pipeline={pipeline} />}
     {inApp && tab === "saved" && <SavedBuilders saved={saved} pipeline={pipeline} onToggleSave={toggleSave} />}
     {inApp && tab === "team" && <MyTeam pipeline={pipeline} />}
-    {inApp && tab === "trust" && <Stub eyebrow="Employer" title="Trust and Safety" line="Your fair-terms commitments, reporting, and dispute resolution." />}
+    {inApp && tab === "trust" && <TrustSafety pipeline={pipeline} />}
     {inApp && tab === "account" && <Account company={company} setCompany={setCompany} />}
   </Shell>;
 }
@@ -1359,6 +1353,55 @@ function Pipeline({ pipeline, move, openSow }) {
         </div>
       </div>;
     })}</div>}
+  </div></Scroll>;
+}
+
+// ---- Trust and Safety / Compliance hub (employer). NO MODEL ----
+// Factual EOR status, a per-engagement liability-assumed marker, and a
+// per-engagement compliance checklist. Stub states flagged as backend. No
+// invented legal specifics. Reads active engagements from the shared pipeline.
+const COMPLIANCE_CHECKLIST = [
+  { label: "SOW signed", state: "done" },
+  { label: "IP assigned to Fumana", state: "done" },
+  { label: "Local registration", state: "progress" },
+  { label: "Tax remittance active", state: "done" },
+];
+
+function TrustSafety({ pipeline }) {
+  const team = pipeline.sow;
+  return <Scroll><div style={{ maxWidth: 860, margin: "0 auto" }} className="rise">
+    <Eyebrow>Trust and Safety</Eyebrow>
+    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Compliance and Employer of Record</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 16 }}>For every active engagement, Fumana is the legal Employer of Record and carries the compliance so you do not have to.</p>
+
+    <Card accent={T.emerald}>
+      <Label>Employer of Record status</Label>
+      <p style={{ fontSize: 14, color: T.ink, margin: "8px 0 12px", lineHeight: 1.6 }}>Fumana assumes local employment liability, tax remittance, and IP assignment for each active engagement. You engage the builder; Fumana carries the legal and compliance obligations.</p>
+      <div style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: F.mono, fontSize: 12, color: T.emerald, border: `1px solid ${T.emerald}`, borderRadius: 6, padding: "5px 11px" }}>&#10003; liability assumed for {team.length} active engagement{team.length === 1 ? "" : "s"}</div>
+    </Card>
+
+    {team.length === 0
+      ? <div style={{ marginTop: 14 }}><Card><p style={{ color: T.slate, fontSize: 14 }}>No active engagements yet. Move a candidate to SOW pending to see per-engagement compliance status.</p></Card></div>
+      : <div style={{ display: "grid", gap: 14, marginTop: 16 }}>
+        {team.map((c, i) => <Card key={i}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <div><div style={{ fontWeight: 600, fontSize: 15 }}>{c.handle}</div><div style={{ color: T.slate, fontSize: 13 }}>{c.role}</div></div>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(6,110,90,0.08)", border: `1px solid ${T.emerald}`, borderRadius: 8, padding: "6px 12px", fontFamily: F.mono, fontSize: 12, color: T.vault }}>&#10003; liability assumed</div>
+          </div>
+          <div style={{ marginTop: 14, display: "grid", gap: 1, background: T.line, border: `1px solid ${T.line}`, borderRadius: 8, overflow: "hidden" }}>
+            {COMPLIANCE_CHECKLIST.map((item, j) => { const done = item.state === "done"; return <div key={j} style={{ background: T.surface, padding: "11px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14 }}>
+                <span aria-hidden="true" style={{ width: 18, height: 18, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, background: done ? T.emerald : "transparent", color: done ? T.onAccent : T.brass, border: done ? "none" : `1px solid ${T.brass}` }}>{done ? "✓" : ""}</span>
+                {item.label}
+              </span>
+              <span style={{ fontFamily: F.mono, fontSize: 11, color: done ? T.emerald : T.brass }}>{done ? "verified" : "in progress"}</span>
+            </div>; })}
+          </div>
+        </Card>)}
+      </div>}
+
+    <div style={{ marginTop: 16, fontFamily: F.mono, fontSize: 11, color: T.slate }}>These statuses are stubbed in this prototype. Real registration, remittance, IP assignment, and signing run on the backend, per jurisdiction. No legal specifics are asserted here.</div>
+    <div style={{ height: 30 }} />
   </div></Scroll>;
 }
 
