@@ -1644,6 +1644,14 @@ const Mini = ({ label, body }) => <div style={{ marginTop: 10, background: T.pap
 // Investments and fee waterfall (employer). NO MODEL — every figure is computed
 // in code from the SOW contract budget, every assumption labelled. (Zuri the
 // marketplace economist is a NEEDS MODEL feature and arrives in Phase 2.)
+// Impact stat tile for the employer Investments "Verifiable impact" section.
+// Every value is computed in code; `note` states the formula or assumption.
+const ImpactStat = ({ n, label, note }) => <div style={{ background: T.paper, border: `1px solid ${T.line}`, borderRadius: 10, padding: "13px 15px" }}>
+  <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 22, color: T.emerald, lineHeight: 1 }}>{n}</div>
+  <div style={{ fontSize: 12.5, color: T.ink, marginTop: 5 }}>{label}</div>
+  <div style={{ fontFamily: F.mono, fontSize: 10.5, color: T.slate, marginTop: 3 }}>{note}</div>
+</div>;
+
 function Finance({ pipeline }) {
   const [statutoryPct, setStatutoryPct] = useState(18);
   const [zBusy, setZBusy] = useState(false);
@@ -1714,17 +1722,22 @@ function Finance({ pipeline }) {
       </Card>)}
     </div>
 
-    <div className="dash" style={{ marginTop: 16 }}>
-      <Card accent={T.emerald}><Label>Total cost vs illustrative domestic equivalent</Label>
-        <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 28, color: T.emerald, marginTop: 6 }}>{usd(saving)} saved / mo</div>
-        <div style={{ fontSize: 13, color: T.slate }}>Your total is {usd(totalMonthly)} / month against an illustrative domestic equivalent of {usd(domestic)} (2.4x illustrative multiplier).</div>
-      </Card>
-      <Card accent={T.brass}><Label>Local capital retained, per year</Label>
-        <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 24, color: T.brass, marginTop: 6 }}>{usd(localRetained)}</div>
-        <div style={{ fontSize: 13, color: T.slate }}>Computed: builder net pay {usd(totalNet)} × 12 × 62% retention. Illustrative.</div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>{["SDG 8", "SDG 9", "SDG 17"].map(s => <span key={s} style={{ fontFamily: F.mono, fontSize: 11, color: T.emerald, border: `1px solid ${T.line}`, borderRadius: 4, padding: "2px 7px" }}>{s}</span>)}</div>
-      </Card>
-    </div>
+    <div style={{ marginTop: 16 }}><Card accent={T.emerald}><Label>Total cost vs illustrative domestic equivalent</Label>
+      <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 28, color: T.emerald, marginTop: 6 }}>{usd(saving)} saved / mo</div>
+      <div style={{ fontSize: 13, color: T.slate }}>Your total is {usd(totalMonthly)} / month against an illustrative domestic equivalent of {usd(domestic)} (2.4x illustrative multiplier).</div>
+    </Card></div>
+
+    <div style={{ marginTop: 16 }}><Card accent={T.brass}>
+      <Label>Verifiable impact</Label>
+      <p style={{ fontSize: 13.5, color: T.slate, margin: "8px 0 14px" }}>Aggregate impact across your active engagements. What an impact investor would want to see: computed and auditable, not claimed.</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(165px, 1fr))", gap: 12 }}>
+        <ImpactStat n={usd(localRetained)} label="Local capital retained / yr" note={`net pay ${usd(totalNet)} × 12 × 62% retention`} />
+        <ImpactStat n={team.length} label={`builder${team.length === 1 ? "" : "s"} engaged`} note="active SOW engagements" />
+        <ImpactStat n={usd(totalMonthly)} label="Total monthly commitment" note="sum of engagement budgets" />
+      </div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 14 }}>{["SDG 8", "SDG 9", "SDG 17"].map(s => <span key={s} style={{ fontFamily: F.mono, fontSize: 11, color: T.emerald, border: `1px solid ${T.line}`, borderRadius: 4, padding: "2px 8px" }}>{s}</span>)}</div>
+      <div style={{ marginTop: 12, fontFamily: F.mono, fontSize: 11, color: T.slate, lineHeight: 1.6 }}>Sourcing: computed in code from the fee waterfall figures above, not model-generated and not certified impact accounting. The 62% retention factor and the SDG mappings are labelled assumptions.</div>
+    </Card></div>
 
     <div style={{ marginTop: 16 }}><Card accent={zNote ? T.emerald : T.line}>
       <Label>Zuri . marketplace economist</Label>
