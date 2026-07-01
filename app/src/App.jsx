@@ -472,6 +472,7 @@ const Toggle = ({ on, onClick, label }) => <button type="button" role="switch" a
 const AUDIT_VIEW = {
   "assessment-completed": () => ({ label: "Assessment completed", desc: "You completed the AI interview with Zuri." }),
   "score-issued": e => ({ label: "Score issued", desc: `Profile Strength ${e.profileStrength} issued, ${e.tier} tier.` }),
+  "contest": e => ({ label: "Score contested", desc: `You contested your ${e.dimension} score. Reference ${e.ref}.` }),
   "human-review": e => ({ label: "Human review requested", desc: `${e.decision}. Reference ${e.ref}.` }),
   "data-export": () => ({ label: "Data exported", desc: "You downloaded a copy of the data Fumana holds about you." }),
   "data-deletion": () => ({ label: "Data deletion requested", desc: "You requested removal of your profile and data from the network." }),
@@ -867,7 +868,7 @@ function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leave
     {screen === "assessinfo" && <AssessInfo onOptIn={() => setScreen("interview")} onOptOut={() => setScreen("humanreview")} onBack={() => setScreen("onboarding")} />}
     {screen === "humanreview" && <HumanReview onSwitch={() => setScreen("interview")} />}
     {screen === "interview" && <Interview profile={profile} onBack={() => setScreen("assessinfo")} onComplete={finish} />}
-    {screen === "dashboard" && result && <Dashboard profile={profile} result={result} onUpskill={() => setScreen("upskill")} published={published} />}
+    {screen === "dashboard" && result && <Dashboard profile={profile} result={result} onUpskill={() => setScreen("upskill")} published={published} audit={audit} logAudit={logAudit} />}
     {screen === "upskill" && result && <Upskill result={result} points={points} setPoints={setPoints} />}
     {screen === "applications" && <Applications builders={builders} pipeline={pipeline} />}
     {screen === "wallet" && <Wallet builders={builders} pipeline={pipeline} />}
@@ -1192,17 +1193,29 @@ function Interview({ profile, onBack, onComplete }) {
   </div></Scroll>;
 }
 
-function Dashboard({ profile, result, onUpskill, published }) {
+function Dashboard({ profile, result, onUpskill, published, audit, logAudit }) {
   const tier = result.tier; const rec = MODULES[result.weakest?.name] || MODULES["Technical depth"];
   const [zuri, setZuri] = useState(""); const [zb, setZb] = useState(false); const [showCalc, setShowCalc] = useState(false);
   const [openDims, setOpenDims] = useState({});
   const transcript = result.transcript || [];
+  // Contest a specific dimension score (NO MODEL). Logged to the shared audit
+  // store; a contested dimension shows "under review" until resolved.
+  const [contestOpen, setContestOpen] = useState(false);
+  const [cDim, setCDim] = useState(""); const [cWhy, setCWhy] = useState(""); const [cCtx, setCCtx] = useState(""); const [cRef, setCRef] = useState("");
+  const contestedDims = new Set((audit || []).filter(e => e.kind === "contest").map(e => e.dimension));
+  function openContest() { setCDim(result.dimensions[0]?.name || ""); setCWhy(""); setCCtx(""); setCRef(""); setContestOpen(true); }
+  function submitContest() {
+    if (!cWhy.trim()) return;
+    const r = "CT-" + Math.random().toString(36).slice(2, 7).toUpperCase();
+    setCRef(r);
+    if (logAudit) logAudit({ kind: "contest", dimension: cDim, reason: cWhy.trim(), context: cCtx.trim(), ref: r, source: "candidate" });
+  }
   async function askZuri() { setZb(true); try { const sys = "You are Zuri, the career copilot inside Fumana. In three to four warm, direct sentences, tell this builder the single most valuable next move to raise their tier, grounded in their weakest dimension. No hype, no em dashes."; setZuri(await callClaude({ system: sys, messages: [{ role: "user", content: `Profile strength ${result.profileStrength}, tier ${tier.name}. Weakest: ${result.weakest?.name} at ${result.weakest?.score}. Role ${profile.role || "engineer"}.` }], expectJson: false })); } catch { setZuri("Zuri is unavailable right now."); } setZb(false); }
   return <Scroll><div style={{ maxWidth: 860, margin: "0 auto" }} className="rise">
     {published && <div style={{ marginBottom: 16, background: "rgba(6,110,90,0.06)", border: `1px solid ${T.emerald}`, borderRadius: 10, padding: "11px 14px", fontSize: 13.5, color: T.vault }}>✓ You are now in the network, identity shielded. Switch to the employer side and search to find yourself.</div>}
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}>
       <div><Eyebrow>Growth dashboard</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 2px" }}>{profile.name || "Your"} profile</h2><div style={{ color: T.slate, fontSize: 14 }}>{profile.role} . {profile.city || "location hidden"}</div></div>
-      <div style={{ textAlign: "right" }}><div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 46, color: T.emerald, lineHeight: 1 }}>{result.profileStrength}</div><button onClick={() => setShowCalc(s => !s)} style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline" }}>profile strength . how is this calculated</button><div><span style={{ display: "inline-block", marginTop: 6, fontFamily: F.mono, fontSize: 12, color: T.onAccent, background: tier.color, borderRadius: 5, padding: "3px 10px" }}>{tier.name} tier</span></div><div style={{ marginTop: 6 }}><ReviewLink what={`Profile Strength: ${result.profileStrength}`} /></div></div>
+      <div style={{ textAlign: "right" }}><div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 46, color: T.emerald, lineHeight: 1 }}>{result.profileStrength}</div><button onClick={() => setShowCalc(s => !s)} style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline" }}>profile strength . how is this calculated</button><div><span style={{ display: "inline-block", marginTop: 6, fontFamily: F.mono, fontSize: 12, color: T.onAccent, background: tier.color, borderRadius: 5, padding: "3px 10px" }}>{tier.name} tier</span></div><div style={{ marginTop: 6, display: "flex", gap: 14, justifyContent: "flex-end", flexWrap: "wrap" }}><ReviewLink what={`Profile Strength: ${result.profileStrength}`} /><button onClick={openContest} style={{ fontFamily: F.mono, fontSize: 11, color: T.brass, background: "transparent", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", whiteSpace: "nowrap" }}>Contest this score</button></div></div>
     </div>
     {showCalc && <div style={{ marginTop: 14 }}><Card pad={16} accent={T.brass}><Label>How this was calculated</Label><p style={{ fontSize: 13.5, color: T.slate, margin: "8px 0 10px" }}>Each dimension is scored 0 to 100 by an AI model from your experience and interview. Profile Strength is their weighted average.</p><div style={{ display: "grid", gap: 5 }}>{result.dimensions.map((d, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", fontFamily: F.mono, fontSize: 12, color: T.slate }}><span>{d.name}</span><span>{d.score} × {WEIGHTS[d.name]?.toFixed(2)}</span></div>)}<div style={{ display: "flex", justifyContent: "space-between", fontFamily: F.mono, fontSize: 12.5, color: T.emerald, borderTop: `1px solid ${T.mute}`, paddingTop: 6, marginTop: 2 }}><span>weighted average</span><span>{result.profileStrength}</span></div></div></Card></div>}
     <div className="dash" style={{ marginTop: 18 }}>
@@ -1211,7 +1224,7 @@ function Dashboard({ profile, result, onUpskill, published }) {
         return <div key={i}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, fontSize: 14 }}><span style={{ color: T.ink, fontWeight: 500 }}>{d.name}</span><span style={{ fontFamily: F.mono, color: low ? T.alert : T.ink }}>{d.score}/100</span></div>
           <div style={{ height: 7, background: T.mute, borderRadius: 4, marginTop: 5 }}><div style={{ height: "100%", width: `${d.score}%`, background: low ? T.alert : T.emerald, borderRadius: 4, animation: "grow 1s ease" }} /></div>
-          <div style={{ marginTop: 7 }}><span style={{ fontFamily: F.mono, fontSize: 10.5, color: low ? T.alert : T.emerald, border: `1px solid ${low ? T.alert : T.emerald}`, borderRadius: 4, padding: "1px 7px" }}>{b.label} . {b.range}</span></div>
+          <div style={{ marginTop: 7, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><span style={{ fontFamily: F.mono, fontSize: 10.5, color: low ? T.alert : T.emerald, border: `1px solid ${low ? T.alert : T.emerald}`, borderRadius: 4, padding: "1px 7px" }}>{b.label} . {b.range}</span>{contestedDims.has(d.name) && <span style={{ fontFamily: F.mono, fontSize: 10.5, color: T.brass, border: `1px solid ${T.brass}`, borderRadius: 4, padding: "1px 7px" }}>under review</span>}</div>
           <div style={{ fontSize: 12.5, color: T.slate, marginTop: 6 }}><b style={{ color: T.ink }}>Why this score:</b> {d.score} lands in the {b.label.toLowerCase()} band ({b.range}), {b.why}.</div>
           <div style={{ fontSize: 12.5, color: T.slate, marginTop: 4 }}><b style={{ color: T.ink }}>Rationale:</b> {d.rationale}</div>
           <div style={{ display: "flex", gap: 16, marginTop: 6, flexWrap: "wrap" }}>
@@ -1233,6 +1246,32 @@ function Dashboard({ profile, result, onUpskill, published }) {
         <Card accent={zuri ? T.emerald : T.line}><Label>Zuri . career copilot</Label>{!zuri && !zb && <div style={{ marginTop: 10 }}><Btn kind="ghost" small onClick={askZuri}>Ask Zuri what to do next</Btn></div>}{zb && <div style={{ marginTop: 12 }}><Spinner label="Zuri is thinking..." /></div>}{zuri && <p style={{ marginTop: 10, fontSize: 14, lineHeight: 1.6 }}>{zuri}</p>}</Card>
       </div>
     </div>
+    {contestOpen && <div role="dialog" aria-modal="true" aria-label="Contest a score" onClick={() => setContestOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(12,26,38,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, width: 460, maxWidth: "100%", maxHeight: "85vh", overflowY: "auto", padding: 22, boxShadow: "0 20px 50px rgba(12,26,38,0.28)" }}>
+        {cRef
+          ? <>
+            <Eyebrow>Contest a score</Eyebrow>
+            <h3 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 20, margin: "8px 0 6px" }}>Contest received. A human will look at this.</h3>
+            <p style={{ fontSize: 14, color: T.slate, marginBottom: 14 }}>Your contest of your {cDim} score is logged and queued for a human reviewer. The score stays as it is, marked under review, until a person resolves it.</p>
+            <div style={{ background: T.paper, border: `1px solid ${T.line}`, borderRadius: 8, padding: 12, fontFamily: F.mono, fontSize: 12.5, display: "grid", gap: 5 }}>
+              <div><span style={{ color: T.slate }}>reference </span><b>{cRef}</b></div>
+              <div><span style={{ color: T.slate }}>expected </span>within 5 business days</div>
+            </div>
+            <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Stubbed queue in this prototype; real routing runs on the backend. Logged to your audit trail.</div>
+            <div style={{ marginTop: 16 }}><Btn onClick={() => setContestOpen(false)}>Done</Btn></div>
+          </>
+          : <>
+            <Eyebrow>Contest a score</Eyebrow>
+            <h3 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 20, margin: "8px 0 6px" }}>Contest a specific dimension</h3>
+            <p style={{ fontSize: 13.5, color: T.slate, marginBottom: 14 }}>Contest is about one score dimension. For anything broader, use request human review instead.</p>
+            <label style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, textTransform: "uppercase", letterSpacing: 0.3 }}>Which dimension?</label>
+            <select value={cDim} onChange={e => setCDim(e.target.value)} style={{ width: "100%", background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11, fontSize: 14, margin: "6px 0 14px" }}>{result.dimensions.map((d, i) => <option key={i} value={d.name}>{d.name} ({d.score}/100)</option>)}</select>
+            <Field label="Why are you contesting this?" value={cWhy} onChange={setCWhy} rows={3} placeholder="In your own words." />
+            <Field label="Extra context (optional)" value={cCtx} onChange={setCCtx} rows={2} placeholder="Anything a reviewer should know." />
+            <div style={{ display: "flex", gap: 10, marginTop: 4 }}><Btn disabled={!cWhy.trim()} onClick={submitContest}>Submit contest</Btn><Btn kind="ghost" onClick={() => setContestOpen(false)}>Cancel</Btn></div>
+          </>}
+      </div>
+    </div>}
     <div style={{ height: 30 }} />
   </div></Scroll>;
 }
