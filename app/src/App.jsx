@@ -480,13 +480,14 @@ const AUDIT_VIEW = {
   "score-issued": e => ({ label: "Score issued", desc: `Profile Strength ${e.profileStrength} issued, ${e.tier} tier.` }),
   "accommodations": e => ({ label: "Accommodations selected", desc: `${ACCOMMODATIONS.filter(a => e[a.id]).map(a => a.label.toLowerCase()).join(", ") || "none"}.` }),
   "contest": e => ({ label: "Score contested", desc: `You contested your ${e.dimension} score. Reference ${e.ref}.` }),
+  "report": e => ({ label: "Issue reported", desc: `You reported: ${e.category}. Reference ${e.ref}.` }),
   "human-review": e => ({ label: "Human review requested", desc: `${e.decision}. Reference ${e.ref}.` }),
   "data-export": () => ({ label: "Data exported", desc: "You downloaded a copy of the data Fumana holds about you." }),
   "data-deletion": () => ({ label: "Data deletion requested", desc: "You requested removal of your profile and data from the network." }),
 };
 
 function AuditTrail({ audit, onBack }) {
-  const events = (audit || []).filter(e => e.kind !== "human-review" || e.source === "candidate");
+  const events = (audit || []).filter(e => e.source !== "employer");
   return <Scroll><div style={{ maxWidth: 760, margin: "0 auto" }} className="rise">
     <Back onClick={onBack} />
     <Eyebrow>Decision audit trail</Eyebrow>
@@ -504,6 +505,55 @@ function AuditTrail({ audit, onBack }) {
         </div>; })}
       </div>}
     <div style={{ marginTop: 14, fontFamily: F.mono, fontSize: 11, color: T.slate }}>This is your transparency record. Contests, human reviews, and status changes are logged here.</div>
+    <div style={{ height: 30 }} />
+  </div></Scroll>;
+}
+
+// ---- Report an issue (both portals). NO MODEL ----
+// A real report flow: category + description + optional evidence, then a
+// received state with a reference and timeframe. Logged to the shared audit
+// store; reviewed by a human, not an AI. Queue is stubbed and flagged.
+const REPORT_CATS_CANDIDATE = ["Unfair assessment", "Employer breached the fair-terms pledge", "Harassment or conduct", "Other"];
+const REPORT_CATS_EMPLOYER = ["Builder conduct", "Platform issue", "Billing dispute", "Other"];
+
+function ReportIssue({ categories, source, logAudit, onBack }) {
+  const [cat, setCat] = useState(categories[0]);
+  const [desc, setDesc] = useState("");
+  const [ctx, setCtx] = useState("");
+  const [ref, setRef] = useState("");
+  function submit() {
+    if (!desc.trim()) return;
+    const r = "RP-" + Math.random().toString(36).slice(2, 7).toUpperCase();
+    setRef(r);
+    if (logAudit) logAudit({ kind: "report", category: cat, description: desc.trim(), context: ctx.trim(), ref: r, source });
+  }
+  return <Scroll><div style={{ maxWidth: 680, margin: "0 auto" }} className="rise">
+    <Back onClick={onBack} />
+    <Eyebrow>Trust and Safety</Eyebrow>
+    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "8px 0 4px" }}>Report an issue</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 18 }}>Tell us what happened. Reports are reviewed by a human, not an AI.</p>
+    <Card>
+      {ref
+        ? <>
+          <Label>Report received</Label>
+          <h3 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 20, margin: "8px 0 6px" }}>Received. A human will look at this.</h3>
+          <p style={{ fontSize: 14, color: T.slate, marginBottom: 14 }}>Your report is logged and queued for a human reviewer.</p>
+          <div style={{ background: T.paper, border: `1px solid ${T.line}`, borderRadius: 8, padding: 12, fontFamily: F.mono, fontSize: 12.5, display: "grid", gap: 5 }}>
+            <div><span style={{ color: T.slate }}>reference </span><b>{ref}</b></div>
+            <div><span style={{ color: T.slate }}>expected </span>within 5 business days</div>
+          </div>
+          <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Stubbed queue in this prototype; real routing runs on the backend. Logged to your audit trail.</div>
+          <div style={{ marginTop: 16 }}><Btn onClick={onBack}>Done</Btn></div>
+        </>
+        : <>
+          <label style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, textTransform: "uppercase", letterSpacing: 0.3 }}>What kind of issue?</label>
+          <select value={cat} onChange={e => setCat(e.target.value)} style={{ width: "100%", background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11, fontSize: 14, margin: "6px 0 14px" }}>{categories.map((c, i) => <option key={i} value={c}>{c}</option>)}</select>
+          <Field label="What happened?" value={desc} onChange={setDesc} rows={4} placeholder="Describe the issue in your own words." />
+          <Field label="Evidence or context (optional)" value={ctx} onChange={setCtx} rows={2} placeholder="Links, dates, or anything a reviewer should know." />
+          <div style={{ marginTop: 4 }}><Btn disabled={!desc.trim()} onClick={submit}>Submit report</Btn></div>
+          <div style={{ marginTop: 14, fontFamily: F.mono, fontSize: 11, color: T.slate, lineHeight: 1.6 }}>Reports are reviewed by a human, not an AI. The queue is stubbed in this prototype; real routing runs on the backend.</div>
+        </>}
+    </Card>
     <div style={{ height: 30 }} />
   </div></Scroll>;
 }
@@ -559,7 +609,7 @@ function FairnessPosture({ onBack }) {
   </div></Scroll>;
 }
 
-function Settings({ builders, onFairness, onAudit, logAudit }) {
+function Settings({ builders, onFairness, onAudit, onReport, logAudit }) {
   const me = builders.find(b => b.isYou);
   const toast = useToast();
   const [lang, setLang] = useState("English");
@@ -634,6 +684,13 @@ function Settings({ builders, onFairness, onAudit, logAudit }) {
       <Label>Decision audit trail</Label>
       <p style={{ fontSize: 14, color: T.slate, margin: "8px 0 12px" }}>Every consequential event about you, in one place: assessments, scores, reviews you requested, and data actions.</p>
       <Btn kind="ghost" small onClick={onAudit}>View your audit trail</Btn>
+    </Card>
+    <div style={{ height: 14 }} />
+
+    <Card>
+      <Label>Report an issue</Label>
+      <p style={{ fontSize: 14, color: T.slate, margin: "8px 0 12px" }}>An unfair assessment, an employer who breached the fair-terms pledge, harassment, or anything else. Reviewed by a human, not an AI.</p>
+      <Btn kind="ghost" small onClick={onReport}>Report an issue</Btn>
     </Card>
     <div style={{ height: 30 }} />
   </div></Scroll>;
@@ -855,7 +912,7 @@ function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leave
   const [points, setPoints] = useState(0);
   const [published, setPublished] = useState(false);
   const toast = useToast();
-  const inApp = CAND_NAV.some(([k]) => k === screen) || screen === "fairness" || screen === "audit";
+  const inApp = CAND_NAV.some(([k]) => k === screen) || screen === "fairness" || screen === "audit" || screen === "report";
 
   function finish(r) {
     setResult(r); setPoints(120);
@@ -884,9 +941,10 @@ function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leave
     {screen === "worth" && <GlobalWorth profile={profile} builders={builders} pipeline={pipeline} />}
     {screen === "community" && <Community builders={builders} pipeline={pipeline} squads={squads} onJoin={joinSquad} onLeave={leaveSquad} onForm={formSquad} />}
     {screen === "alchemist" && <ExperienceAlchemist profile={profile} />}
-    {screen === "settings" && <Settings builders={builders} onFairness={() => setScreen("fairness")} onAudit={() => setScreen("audit")} logAudit={logAudit} />}
+    {screen === "settings" && <Settings builders={builders} onFairness={() => setScreen("fairness")} onAudit={() => setScreen("audit")} onReport={() => setScreen("report")} logAudit={logAudit} />}
     {screen === "fairness" && <FairnessPosture onBack={() => setScreen("settings")} />}
     {screen === "audit" && <AuditTrail audit={audit} onBack={() => setScreen("settings")} />}
+    {screen === "report" && <ReportIssue categories={REPORT_CATS_CANDIDATE} source="candidate" logAudit={logAudit} onBack={() => setScreen("settings")} />}
   </Shell>;
 }
 
@@ -1417,7 +1475,7 @@ function EmpDashboard({ company, onEngage }) {
   </div></Scroll>;
 }
 
-function EmployerApp({ builders, pipeline, setPipeline, exit, toRole }) {
+function EmployerApp({ builders, pipeline, setPipeline, logAudit, exit, toRole }) {
   const [screen, setScreen] = useState("welcome");
   const [tab, setTab] = useState("dashboard");
   const [company, setCompany] = useState({ name: "", domain: "", industry: "", size: "", country: "", hiringFor: "" });
@@ -1453,8 +1511,9 @@ function EmployerApp({ builders, pipeline, setPipeline, exit, toRole }) {
     {inApp && tab === "investments" && <Finance pipeline={pipeline} />}
     {inApp && tab === "saved" && <SavedBuilders saved={saved} pipeline={pipeline} onToggleSave={toggleSave} />}
     {inApp && tab === "team" && <MyTeam pipeline={pipeline} />}
-    {inApp && tab === "trust" && <TrustSafety pipeline={pipeline} onFairness={() => setTab("fairness")} />}
+    {inApp && tab === "trust" && <TrustSafety pipeline={pipeline} onFairness={() => setTab("fairness")} onReport={() => setTab("report")} />}
     {inApp && tab === "fairness" && <FairnessPosture onBack={() => setTab("trust")} />}
+    {inApp && tab === "report" && <ReportIssue categories={REPORT_CATS_EMPLOYER} source="employer" logAudit={logAudit} onBack={() => setTab("trust")} />}
     {inApp && tab === "account" && <Account company={company} setCompany={setCompany} />}
   </Shell>;
 }
@@ -1638,7 +1697,7 @@ const COMPLIANCE_CHECKLIST = [
   { label: "Tax remittance active", state: "done" },
 ];
 
-function TrustSafety({ pipeline, onFairness }) {
+function TrustSafety({ pipeline, onFairness, onReport }) {
   const team = pipeline.sow;
   return <Scroll><div style={{ maxWidth: 860, margin: "0 auto" }} className="rise">
     <Eyebrow>Trust and Safety</Eyebrow>
@@ -1677,6 +1736,11 @@ function TrustSafety({ pipeline, onFairness }) {
       <Label>Fairness</Label>
       <p style={{ fontSize: 14, color: T.slate, margin: "8px 0 12px" }}>How the assessment guards against bias, its known limits, and what a builder can do if it felt unfair. The same page builders see.</p>
       <Btn kind="ghost" small onClick={onFairness}>Read the fairness posture</Btn>
+    </Card></div>
+    <div style={{ marginTop: 14 }}><Card>
+      <Label>Report an issue</Label>
+      <p style={{ fontSize: 14, color: T.slate, margin: "8px 0 12px" }}>Builder conduct, a platform issue, a billing dispute, or anything else. Reviewed by a human, not an AI.</p>
+      <Btn kind="ghost" small onClick={onReport}>Report an issue</Btn>
     </Card></div>
     <div style={{ height: 30 }} />
   </div></Scroll>;
@@ -1963,7 +2027,7 @@ export default function App() {
         {view === "landing" && <div style={marketingFont}><LandingPage onSignInClick={toRole} /></div>}
         {view === "role" && <div style={marketingFont}><RoleSelectionPage onRoleSelect={r => setView(r === "builder" ? "candidate" : "employer")} onBack={() => setView("landing")} /></div>}
         {view === "candidate" && <CandidateApp addBuilder={addBuilder} builders={builders} pipeline={pipeline} squads={squads} joinSquad={joinSquad} leaveSquad={leaveSquad} formSquad={formSquad} audit={audit} logAudit={logAudit} exit={() => setView("landing")} toRole={toRole} />}
-        {view === "employer" && <EmployerApp builders={builders} pipeline={pipeline} setPipeline={setPipeline} exit={() => setView("landing")} toRole={toRole} />}
+        {view === "employer" && <EmployerApp builders={builders} pipeline={pipeline} setPipeline={setPipeline} logAudit={logAudit} exit={() => setView("landing")} toRole={toRole} />}
       </HumanReviewProvider>
     </ToastProvider>
   </div>;
