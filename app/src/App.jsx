@@ -979,13 +979,20 @@ function EmployerApp({ builders, pipeline, setPipeline, exit }) {
   };
   const move = (c, from, to) => setPipeline(p => ({ ...p, [from]: p[from].filter(x => x.handle !== c.handle), [to]: [...p[to], c] }));
   const openSow = c => { setActive(c); setSow(null); setTab("compliance"); };
+  // Reveal-and-interview gate: committing to an interview moves the builder into
+  // the shared pipeline's interviewing stage, which is what unlocks role + summary.
+  const requestInterview = c => {
+    if (pipeline.interviewing.concat(pipeline.sow).some(x => x.handle === c.handle)) return;
+    setPipeline(p => ({ ...p, shortlisted: p.shortlisted.filter(x => x.handle !== c.handle), interviewing: [...p.interviewing, c] }));
+    toast(`Interview requested with ${c.handle}. Identity revealed for the interview.`);
+  };
   return <Shell role="employer" exit={exit} nav={inApp ? EMP_NAV : null} active={tab} onNav={setTab} showZuri={inApp}>
     {screen === "welcome" && <EmpWelcome onNext={() => setScreen("auth")} />}
     {screen === "auth" && <SignIn onNext={() => setScreen("company-info")} who="employer" />}
     {screen === "company-info" && <EmpCompanyInfo company={company} setCompany={setCompany} onNext={() => setScreen("alignment")} onBack={() => setScreen("auth")} />}
     {screen === "alignment" && <EmpAlignment onEnter={() => { setScreen("app"); setTab("dashboard"); }} onBack={() => setScreen("company-info")} />}
     {inApp && tab === "dashboard" && <EmpDashboard company={company} onEngage={() => setTab("engage")} />}
-    {inApp && tab === "engage" && <Search builders={builders} onShortlist={shortlist} chosen={[...pipeline.shortlisted, ...pipeline.interviewing, ...pipeline.sow]} />}
+    {inApp && tab === "engage" && <Search builders={builders} pipeline={pipeline} onShortlist={shortlist} onRequestInterview={requestInterview} />}
     {inApp && tab === "pipeline" && <Pipeline pipeline={pipeline} move={move} openSow={openSow} />}
     {inApp && tab === "compliance" && <Compliance active={active} sow={sow} setSow={setSow} />}
     {inApp && tab === "investments" && <Finance active={active} />}
@@ -996,11 +1003,38 @@ function EmployerApp({ builders, pipeline, setPipeline, exit }) {
   </Shell>;
 }
 
-function Search({ builders, onShortlist, chosen }) {
+// One bias-shielded result card. Locked shows fit + handle + skills (evidence);
+// role and summary are revealed only once the employer has requested an interview.
+// No name, photo, or location is ever rendered (the network entry has none).
+function SearchCard({ c, isRevealed, isShort, isIn, budget, onShortlist, onRequestInterview }) {
+  return <Card accent={isRevealed ? T.emerald : T.line}>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <div aria-hidden="true" style={{ width: 44, height: 44, borderRadius: 10, background: T.mute, border: `1px solid ${T.line}`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.mono, fontSize: 11, color: T.slate }}>FU</div>
+        <div><div style={{ fontWeight: 600 }}>{c.handle}{isRevealed && <span style={{ color: T.slate, fontWeight: 400, fontSize: 13 }}> . {c.role}</span>}{c.isYou && <span style={{ marginLeft: 8, fontFamily: F.mono, fontSize: 10, color: T.emerald, border: `1px solid ${T.emerald}`, borderRadius: 4, padding: "1px 6px" }}>new to network</span>}</div><div style={{ fontFamily: F.mono, fontSize: 11, color: isRevealed ? T.emerald : T.slate }}>{isRevealed ? "identity revealed for interview" : "identity shielded"}</div></div>
+      </div>
+      <div style={{ textAlign: "right" }}><div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 24, color: T.emerald, lineHeight: 1 }}>{c.fit}%</div><div style={{ fontFamily: F.mono, fontSize: 10, color: T.slate }}>fit . computed</div></div>
+    </div>
+    <div style={{ display: "flex", gap: 7, flexWrap: "wrap", margin: "12px 0 10px" }}>{(c.skills || []).map((s, j) => <span key={j} style={{ fontFamily: F.mono, fontSize: 11.5, color: T.emerald, border: `1px solid ${T.line}`, borderRadius: 4, padding: "3px 8px" }}>{s}</span>)}</div>
+    {isRevealed
+      ? <p style={{ fontSize: 14, color: T.ink, marginBottom: 12 }}>{c.summary}</p>
+      : <div style={{ border: `1px dashed ${T.line}`, borderRadius: 8, padding: "10px 12px", marginBottom: 12, fontSize: 13, color: T.slate, background: T.paper }}>Role and summary are shielded. Request an interview to reveal them and commit to this builder.</div>}
+    <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
+      {!isRevealed && <Btn kind="ghost" small disabled={isIn} onClick={() => onShortlist({ ...c, monthlyUsd: Number(budget) })}>{isShort ? "Shortlisted" : "Shortlist"}</Btn>}
+      {isRevealed
+        ? <span style={{ fontFamily: F.mono, fontSize: 12, color: T.emerald, alignSelf: "center" }}>Interview requested</span>
+        : <Btn small onClick={() => onRequestInterview({ ...c, monthlyUsd: Number(budget) })}>Request interview</Btn>}
+    </div>
+  </Card>;
+}
+
+function Search({ builders, pipeline, onShortlist, onRequestInterview }) {
   const [need, setNeed] = useState("Backend engineer for a payments reconciliation service, fintech, Berlin team, async across time zones.");
   const [budget, setBudget] = useState("4500");
   const [ranked, setRanked] = useState(null); const [busy, setBusy] = useState(false);
   const ready = need.trim().length > 20 && Number(budget) > 0;
+  // Fit is computed from the shared store: profile strength plus role/skill hits
+  // against the described need. No model.
   function run() {
     setBusy(true);
     const words = need.toLowerCase();
@@ -1012,10 +1046,14 @@ function Search({ builders, onShortlist, chosen }) {
     }).sort((a, b) => b.fit - a.fit);
     setTimeout(() => { setRanked(scored); setBusy(false); }, 350);
   }
-  const inList = h => chosen.some(c => c.handle === h);
+  // Reveal state IS the shared pipeline: role + summary unlock only once the
+  // employer has committed to an interview (interviewing or beyond).
+  const revealed = h => pipeline.interviewing.concat(pipeline.sow).some(x => x.handle === h);
+  const inPipeline = h => pipeline.shortlisted.concat(pipeline.interviewing, pipeline.sow).some(x => x.handle === h);
+  const shortlisted = h => pipeline.shortlisted.some(x => x.handle === h);
   return <Scroll><div style={{ maxWidth: 900, margin: "0 auto" }} className="rise">
-    <Eyebrow>Procurement</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Engage experts by evidence, not keywords</h2>
-    <p style={{ color: T.slate, fontSize: 15, marginBottom: 16 }}>Describe the work and the budget. Matches are bias-shielded: identity stays hidden until you commit to an interview.</p>
+    <Eyebrow>Engage Experts</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Engage experts by evidence, not keywords</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 16 }}>Describe the work and the budget. Matches are bias-shielded: no name, photo, or location. Role and summary stay hidden until you commit to an interview.</p>
     <Card><Label>What you need</Label>
       <textarea rows={3} value={need} onChange={e => setNeed(e.target.value)} style={{ width: "100%", marginTop: 7, background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11, fontSize: 14, resize: "vertical" }} />
       <div className="row2" style={{ marginTop: 12, alignItems: "end" }}>
@@ -1025,18 +1063,7 @@ function Search({ builders, onShortlist, chosen }) {
     </Card>
     {ranked && <div style={{ marginTop: 18, display: "grid", gap: 14 }}>
       {ranked.length === 0 && <Card><p style={{ color: T.slate, fontSize: 14 }}>No builders in the network yet. Build a candidate profile first, then search.</p></Card>}
-      {ranked.map((c, i) => <Card key={i} accent={c.isYou ? T.emerald : T.line}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <div aria-hidden="true" style={{ width: 44, height: 44, borderRadius: 10, background: T.mute, border: `1px solid ${T.line}`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.mono, color: T.slate }}>FU</div>
-            <div><div style={{ fontWeight: 600 }}>{c.handle} <span style={{ color: T.slate, fontWeight: 400, fontSize: 13 }}>. {c.role}</span>{c.isYou && <span style={{ marginLeft: 8, fontFamily: F.mono, fontSize: 10, color: T.emerald, border: `1px solid ${T.emerald}`, borderRadius: 4, padding: "1px 6px" }}>new to network</span>}</div><div style={{ fontFamily: F.mono, fontSize: 11, color: T.slate }}>identity shielded</div></div>
-          </div>
-          <div style={{ textAlign: "right" }}><div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 24, color: T.emerald, lineHeight: 1 }}>{c.fit}%</div><div style={{ fontFamily: F.mono, fontSize: 10, color: T.slate }}>fit . computed</div></div>
-        </div>
-        <p style={{ fontSize: 14, color: T.ink, margin: "12px 0 10px" }}>{c.summary}</p>
-        <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 12 }}>{(c.skills || []).map((s, j) => <span key={j} style={{ fontFamily: F.mono, fontSize: 11.5, color: T.emerald, border: `1px solid ${T.line}`, borderRadius: 4, padding: "3px 8px" }}>{s}</span>)}</div>
-        <div style={{ display: "flex", justifyContent: "flex-end" }}><Btn small disabled={inList(c.handle)} onClick={() => onShortlist({ ...c, monthlyUsd: Number(budget) })}>{inList(c.handle) ? "In pipeline" : "Add to pipeline"}</Btn></div>
-      </Card>)}
+      {ranked.map((c, i) => <SearchCard key={i} c={c} isRevealed={revealed(c.handle)} isShort={shortlisted(c.handle)} isIn={inPipeline(c.handle)} budget={budget} onShortlist={onShortlist} onRequestInterview={onRequestInterview} />)}
     </div>}
   </div></Scroll>;
 }
