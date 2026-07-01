@@ -998,7 +998,7 @@ function EmployerApp({ builders, pipeline, setPipeline, exit }) {
     {inApp && tab === "engage" && <Search builders={builders} pipeline={pipeline} onShortlist={shortlist} onRequestInterview={requestInterview} saved={saved} onToggleSave={toggleSave} />}
     {inApp && tab === "pipeline" && <Pipeline pipeline={pipeline} move={move} openSow={openSow} />}
     {inApp && tab === "compliance" && <Compliance active={active} sow={sow} setSow={setSow} />}
-    {inApp && tab === "investments" && <Finance active={active} />}
+    {inApp && tab === "investments" && <Finance pipeline={pipeline} />}
     {inApp && tab === "saved" && <SavedBuilders saved={saved} pipeline={pipeline} onToggleSave={toggleSave} />}
     {inApp && tab === "team" && <MyTeam pipeline={pipeline} />}
     {inApp && tab === "trust" && <Stub eyebrow="Employer" title="Trust and Safety" line="Your fair-terms commitments, reporting, and dispute resolution." />}
@@ -1188,28 +1188,70 @@ function Compliance({ active, sow, setSow }) {
 const SowList = ({ label, items }) => <div style={{ marginTop: 12 }}><div style={{ color: T.emerald, fontSize: 12, fontFamily: F.mono, marginBottom: 6 }}>{label}</div><div style={{ display: "grid", gap: 6 }}>{(items || []).map((it, i) => <div key={i} style={{ fontSize: 14, display: "flex", gap: 8 }}><span style={{ color: T.brass }}>.</span><span>{it}</span></div>)}</div></div>;
 const Mini = ({ label, body }) => <div style={{ marginTop: 10, background: T.paper, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11 }}><span style={{ color: T.brass, fontSize: 12, fontWeight: 600 }}>{label}. </span><span style={{ color: T.slate, fontSize: 13 }}>{body}</span></div>;
 
-function Finance({ active }) {
-  const [statutoryPct, setStatutoryPct] = useState(18); const platformPct = 12;
-  const [zuri, setZuri] = useState(""); const [zb, setZb] = useState(false);
-  if (!active) return <Scroll><div style={{ maxWidth: 760, margin: "0 auto" }} className="rise"><Card><p style={{ color: T.slate, fontSize: 14 }}>Select a candidate in your pipeline, then open Finance to see the cost breakdown and impact.</p></Card></div></Scroll>;
-  const total = active.monthlyUsd || 4500;
-  const platform = total * platformPct / 100, statutory = total * statutoryPct / 100, builder = total - platform - statutory;
-  const domestic = total * 2.4, ngn = builder * 1550 * 12, retained = ngn * 0.62;
-  const rows = [{ k: "Builder net pay", v: builder, c: T.emerald }, { k: "Local statutory remittance", v: statutory, c: T.slate, note: "illustrative, set below, handled per jurisdiction" }, { k: "Fumana platform and infrastructure", v: platform, c: T.brass, note: `${platformPct}% disclosed fee` }];
-  async function ask() { setZb(true); try { const sys = "You are Zuri, the Fumana marketplace economist. In three to four plain sentences, advise an employer whether this monthly budget buys strong talent for this role, using purchasing power parity context for the African market. No hype, no em dashes, no invented exact figures."; setZuri(await callClaude({ system: sys, messages: [{ role: "user", content: `Role ${active.role}. Monthly USD ${total}.` }], expectJson: false })); } catch { setZuri("Zuri is unavailable right now."); } setZb(false); }
-  return <Scroll><div style={{ maxWidth: 880, margin: "0 auto" }} className="rise">
-    <Eyebrow>Financial hub</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Where every dollar goes</h2>
-    <p style={{ color: T.slate, fontSize: 15, marginBottom: 16 }}>Monthly engagement for {active.handle}. Figures computed from the total, with each assumption shown.</p>
-    <div className="split">
-      <Card><div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}><Label>Monthly total</Label><span style={{ fontFamily: F.mono, fontSize: 20 }}>{usd(total)}</span></div>
-        <div style={{ display: "grid", gap: 1, background: T.line, border: `1px solid ${T.line}`, borderRadius: 8, overflow: "hidden" }}>{rows.map((r, i) => <div key={i} style={{ background: T.surface, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}><div><div style={{ fontSize: 14, color: r.c, fontWeight: 600 }}>{r.k}</div>{r.note && <div style={{ fontFamily: F.mono, fontSize: 10.5, color: T.slate, marginTop: 2 }}>{r.note}</div>}</div><div style={{ fontFamily: F.mono, fontSize: 15, color: r.c }}>{usd(r.v)}</div></div>)}</div>
-        <div style={{ marginTop: 14 }}><Label>Illustrative statutory rate: {statutoryPct}%</Label><input aria-label="Statutory rate" type="range" min="0" max="35" value={statutoryPct} onChange={e => setStatutoryPct(Number(e.target.value))} style={{ width: "100%", marginTop: 8, accentColor: T.emerald }} /><div style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, marginTop: 4 }}>An assumption you control. Real remittance is computed per jurisdiction at source.</div></div>
+// Investments and fee waterfall (employer). NO MODEL — every figure is computed
+// in code from the SOW contract budget, every assumption labelled. (Zuri the
+// marketplace economist is a NEEDS MODEL feature and arrives in Phase 2.)
+function Finance({ pipeline }) {
+  const [statutoryPct, setStatutoryPct] = useState(18);
+  const platformPct = 12; // Fumana platform fee, disclosed
+  const team = pipeline.sow;
+  if (team.length === 0) return <Scroll><div style={{ maxWidth: 760, margin: "0 auto" }} className="rise">
+    <Eyebrow>Investments</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 8px" }}>Where every dollar goes</h2>
+    <Card><p style={{ color: T.slate, fontSize: 14 }}>No active engagements yet. Move a candidate to SOW pending to see the cost breakdown and impact.</p></Card>
+  </div></Scroll>;
+
+  const rows = team.map(c => {
+    const monthly = c.monthlyUsd || 0;
+    const platform = Math.round(monthly * platformPct / 100);
+    const statutory = Math.round(monthly * statutoryPct / 100);
+    return { c, monthly, platform, statutory, net: monthly - platform - statutory };
+  });
+  const sum = k => rows.reduce((s, r) => s + r[k], 0);
+  const totalMonthly = sum("monthly"), totalNet = sum("net");
+  const localRetained = Math.round(totalNet * 12 * 0.62); // illustrative annual local value retained
+  const domestic = Math.round(totalMonthly * 2.4);        // illustrative domestic equivalent
+  const saving = domestic - totalMonthly;
+
+  return <Scroll><div style={{ maxWidth: 900, margin: "0 auto" }} className="rise">
+    <Eyebrow>Investments</Eyebrow>
+    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Where every dollar goes</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 16 }}>Monthly cost across your active engagements. Every figure is computed in code; every assumption is labelled.</p>
+
+    <Card>
+      <Label>Illustrative statutory remittance: {statutoryPct}%</Label>
+      <input aria-label="Statutory remittance rate" type="range" min="0" max="35" value={statutoryPct} onChange={e => setStatutoryPct(Number(e.target.value))} style={{ width: "100%", marginTop: 8, accentColor: T.emerald }} />
+      <div style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, marginTop: 4 }}>An assumption you control. Real remittance is computed per jurisdiction at source. Fumana platform fee is a disclosed {platformPct}%.</div>
+    </Card>
+
+    <div style={{ display: "grid", gap: 14, marginTop: 16 }}>
+      {rows.map((r, i) => <Card key={i}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12, gap: 12, flexWrap: "wrap" }}>
+          <div><Label>{r.c.handle}</Label><div style={{ fontSize: 13, color: T.slate }}>{r.c.role}</div></div>
+          <span style={{ fontFamily: F.mono, fontSize: 20 }}>{usd(r.monthly)}<span style={{ color: T.slate, fontSize: 12 }}> / mo</span></span>
+        </div>
+        <div style={{ display: "grid", gap: 1, background: T.line, border: `1px solid ${T.line}`, borderRadius: 8, overflow: "hidden" }}>
+          {[
+            { k: "Builder net pay", v: r.net, c: T.emerald, note: `${100 - platformPct - statutoryPct}% of total` },
+            { k: "Local statutory remittance", v: r.statutory, c: T.slate, note: `${statutoryPct}% illustrative, set by the slider` },
+            { k: "Fumana platform fee", v: r.platform, c: T.brass, note: `${platformPct}% disclosed` },
+          ].map((w, j) => <div key={j} style={{ background: T.surface, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div><div style={{ fontSize: 14, color: w.c, fontWeight: 600 }}>{w.k}</div><div style={{ fontFamily: F.mono, fontSize: 10.5, color: T.slate, marginTop: 2 }}>{w.note}</div></div>
+            <div style={{ fontFamily: F.mono, fontSize: 15, color: w.c }}>{usd(w.v)}</div>
+          </div>)}
+        </div>
+      </Card>)}
+    </div>
+
+    <div className="dash" style={{ marginTop: 16 }}>
+      <Card accent={T.emerald}><Label>Total cost vs illustrative domestic equivalent</Label>
+        <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 28, color: T.emerald, marginTop: 6 }}>{usd(saving)} saved / mo</div>
+        <div style={{ fontSize: 13, color: T.slate }}>Your total is {usd(totalMonthly)} / month against an illustrative domestic equivalent of {usd(domestic)} (2.4x illustrative multiplier).</div>
       </Card>
-      <div style={{ display: "grid", gap: 16, alignContent: "start" }}>
-        <Card accent={T.emerald}><Label>ROI vs domestic hire</Label><div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 28, color: T.emerald, marginTop: 6 }}>{usd(domestic - total)}</div><div style={{ fontSize: 13, color: T.slate }}>estimated monthly saving against an illustrative domestic equivalent of {usd(domestic)}.</div></Card>
-        <Card accent={T.brass}><Label>Impact, settled in the open</Label><div style={{ fontFamily: F.mono, fontSize: 18, color: T.brass, marginTop: 6 }}>NGN {Math.round(retained).toLocaleString()}</div><div style={{ fontSize: 13, color: T.slate }}>annual local capital retained, computed: builder pay × rate × 62% retention.</div><div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>{["SDG 8", "SDG 9", "SDG 17"].map(s => <span key={s} style={{ fontFamily: F.mono, fontSize: 11, color: T.emerald, border: `1px solid ${T.line}`, borderRadius: 4, padding: "2px 7px" }}>{s}</span>)}</div></Card>
-        <Card accent={zuri ? T.emerald : T.line}><Label>Zuri . marketplace economist</Label>{!zuri && !zb && <div style={{ marginTop: 10 }}><Btn kind="ghost" small onClick={ask}>Is this budget right</Btn></div>}{zb && <div style={{ marginTop: 12 }}><Spinner label="Zuri is checking the market..." /></div>}{zuri && <p style={{ marginTop: 10, fontSize: 14, lineHeight: 1.6 }}>{zuri}</p>}</Card>
-      </div>
+      <Card accent={T.brass}><Label>Local capital retained, per year</Label>
+        <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 24, color: T.brass, marginTop: 6 }}>{usd(localRetained)}</div>
+        <div style={{ fontSize: 13, color: T.slate }}>Computed: builder net pay {usd(totalNet)} × 12 × 62% retention. Illustrative.</div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>{["SDG 8", "SDG 9", "SDG 17"].map(s => <span key={s} style={{ fontFamily: F.mono, fontSize: 11, color: T.emerald, border: `1px solid ${T.line}`, borderRadius: 4, padding: "2px 7px" }}>{s}</span>)}</div>
+      </Card>
     </div>
     <div style={{ height: 30 }} />
   </div></Scroll>;
