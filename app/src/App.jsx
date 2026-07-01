@@ -172,12 +172,13 @@ function HumanReviewProvider({ logAudit, children }) {
   const [decision, setDecision] = useState("");
   const [reason, setReason] = useState("");
   const [ref, setRef] = useState("");
-  const request = useCallback(what => { setDecision(what || ""); setReason(""); setRef(""); setOpen(true); }, []);
+  const [src, setSrc] = useState("candidate");
+  const request = useCallback((what, source) => { setDecision(what || ""); setSrc(source || "candidate"); setReason(""); setRef(""); setOpen(true); }, []);
   function submit() {
     if (!reason.trim()) return;
     const r = "HR-" + Math.random().toString(36).slice(2, 7).toUpperCase();
     setRef(r);
-    if (logAudit) logAudit({ kind: "human-review", decision, reason: reason.trim(), ref: r });
+    if (logAudit) logAudit({ kind: "human-review", decision, reason: reason.trim(), ref: r, source: src });
   }
   return <HumanReviewCtx.Provider value={request}>
     {children}
@@ -210,9 +211,9 @@ function HumanReviewProvider({ logAudit, children }) {
 }
 
 // Small "Request human review" trigger placed alongside an AI decision surface.
-function ReviewLink({ what }) {
+function ReviewLink({ what, source }) {
   const request = useHumanReview();
-  return <button onClick={() => request(what)} style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, background: "transparent", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", whiteSpace: "nowrap" }}>Request human review</button>;
+  return <button onClick={() => request(what, source)} style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, background: "transparent", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", whiteSpace: "nowrap" }}>Request human review</button>;
 }
 
 
@@ -464,6 +465,41 @@ const Toggle = ({ on, onClick, label }) => <button type="button" role="switch" a
   <span aria-hidden="true" style={{ position: "absolute", top: 2, left: on ? 22 : 2, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left .15s" }} />
 </button>;
 
+// ---- Decision audit trail (candidate). NO MODEL ----
+// Every consequential event about the candidate, most recent first, fed from the
+// shared audit store. Human reviews are filtered to the candidate's own. This is
+// the transparency backbone Phase 4 writes to.
+const AUDIT_VIEW = {
+  "assessment-completed": () => ({ label: "Assessment completed", desc: "You completed the AI interview with Zuri." }),
+  "score-issued": e => ({ label: "Score issued", desc: `Profile Strength ${e.profileStrength} issued, ${e.tier} tier.` }),
+  "human-review": e => ({ label: "Human review requested", desc: `${e.decision}. Reference ${e.ref}.` }),
+  "data-export": () => ({ label: "Data exported", desc: "You downloaded a copy of the data Fumana holds about you." }),
+  "data-deletion": () => ({ label: "Data deletion requested", desc: "You requested removal of your profile and data from the network." }),
+};
+
+function AuditTrail({ audit, onBack }) {
+  const events = (audit || []).filter(e => e.kind !== "human-review" || e.source === "candidate");
+  return <Scroll><div style={{ maxWidth: 760, margin: "0 auto" }} className="rise">
+    <Back onClick={onBack} />
+    <Eyebrow>Decision audit trail</Eyebrow>
+    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "8px 0 4px" }}>Every consequential event about you</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 18 }}>A record of what has happened to your profile: assessments, scores, reviews you requested, and data actions. Most recent first.</p>
+    {events.length === 0
+      ? <Card><p style={{ color: T.slate, fontSize: 14 }}>No events yet. Complete your assessment and your audit trail begins here.</p></Card>
+      : <div style={{ display: "grid", gap: 1, background: T.line, border: `1px solid ${T.line}`, borderRadius: 8, overflow: "hidden" }}>
+        {events.map((e, i) => { const v = (AUDIT_VIEW[e.kind] || (() => ({ label: e.kind, desc: "" })))(e); return <div key={i} style={{ background: T.surface, padding: "13px 15px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "baseline" }}>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>{v.label}</span>
+            <span style={{ fontFamily: F.mono, fontSize: 11, color: T.slate }}>{new Date(e.at).toLocaleString()}</span>
+          </div>
+          {v.desc && <div style={{ fontSize: 13, color: T.slate, marginTop: 3 }}>{v.desc}</div>}
+        </div>; })}
+      </div>}
+    <div style={{ marginTop: 14, fontFamily: F.mono, fontSize: 11, color: T.slate }}>This is your transparency record. Contests, human reviews, and status changes are logged here.</div>
+    <div style={{ height: 30 }} />
+  </div></Scroll>;
+}
+
 // ---- Fairness posture (both portals). NO MODEL ----
 // A dedicated, honest page: what we do to reduce bias, the known limits, and
 // what a candidate can do if an assessment felt unfair. No claim we cannot
@@ -515,7 +551,7 @@ function FairnessPosture({ onBack }) {
   </div></Scroll>;
 }
 
-function Settings({ builders, onFairness }) {
+function Settings({ builders, onFairness, onAudit, logAudit }) {
   const me = builders.find(b => b.isYou);
   const toast = useToast();
   const [lang, setLang] = useState("English");
@@ -532,6 +568,7 @@ function Settings({ builders, onFairness }) {
       URL.revokeObjectURL(url);
       toast("Your data export downloaded.");
     } catch { toast("Data export runs on the backend in production."); }
+    if (logAudit) logAudit({ kind: "data-export" });
   }
 
   const row = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "11px 0", borderTop: `1px solid ${T.mute}` };
@@ -571,7 +608,7 @@ function Settings({ builders, onFairness }) {
       </div>
       {confirmDelete && !deleted && <div style={{ marginTop: 14, background: T.paper, border: `1px solid ${T.alert}`, borderRadius: 8, padding: 14 }}>
         <div style={{ fontSize: 14, marginBottom: 10 }}>This requests removal of your profile and data from the network. This cannot be undone.</div>
-        <div style={{ display: "flex", gap: 10 }}><Btn small kind="ghost" onClick={() => { setConfirmDelete(false); setDeleted(true); }}>Confirm delete</Btn><Btn small kind="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Btn></div>
+        <div style={{ display: "flex", gap: 10 }}><Btn small kind="ghost" onClick={() => { setConfirmDelete(false); setDeleted(true); if (logAudit) logAudit({ kind: "data-deletion" }); }}>Confirm delete</Btn><Btn small kind="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Btn></div>
       </div>}
       {deleted && <div style={{ marginTop: 14, background: T.paper, border: `1px solid ${T.line}`, borderRadius: 8, padding: 14, fontSize: 13.5, color: T.slate }}>Deletion requested. A reviewer will confirm and your profile is withdrawn from the network. Stubbed queue in this prototype.</div>}
       <div style={{ marginTop: 12, fontFamily: F.mono, fontSize: 11, color: T.slate }}>This is the entry point to your data rights. Contest, human review, and the full data-rights flow arrive in the trust and safety phase.</div>
@@ -582,6 +619,13 @@ function Settings({ builders, onFairness }) {
       <Label>Fairness</Label>
       <p style={{ fontSize: 14, color: T.slate, margin: "8px 0 12px" }}>An honest account of how the assessment guards against bias, its known limits, and what you can do if it felt unfair.</p>
       <Btn kind="ghost" small onClick={onFairness}>How you are assessed, and its limits</Btn>
+    </Card>
+    <div style={{ height: 14 }} />
+
+    <Card>
+      <Label>Decision audit trail</Label>
+      <p style={{ fontSize: 14, color: T.slate, margin: "8px 0 12px" }}>Every consequential event about you, in one place: assessments, scores, reviews you requested, and data actions.</p>
+      <Btn kind="ghost" small onClick={onAudit}>View your audit trail</Btn>
     </Card>
     <div style={{ height: 30 }} />
   </div></Scroll>;
@@ -795,14 +839,14 @@ function NegotiationCoach({ profile, builders, pipeline }) {
   </div></Scroll>;
 }
 
-function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leaveSquad, formSquad, exit, toRole }) {
+function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leaveSquad, formSquad, audit, logAudit, exit, toRole }) {
   const [screen, setScreen] = useState("signin");
   const [profile, setProfile] = useState({ name: "", role: "", city: "", experience: "" });
   const [result, setResult] = useState(null);
   const [points, setPoints] = useState(0);
   const [published, setPublished] = useState(false);
   const toast = useToast();
-  const inApp = CAND_NAV.some(([k]) => k === screen) || screen === "fairness";
+  const inApp = CAND_NAV.some(([k]) => k === screen) || screen === "fairness" || screen === "audit";
 
   function finish(r) {
     setResult(r); setPoints(120);
@@ -811,6 +855,8 @@ function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leave
     const summary = `${profile.role || "Engineer"} with a ${r.tier.name} profile. Strongest in ${top.slice(0, 2).join(" and ")}. ${profile.experience.split(".")[0]}.`;
     addBuilder({ handle, role: profile.role || "Engineer", summary, skills: top, profileStrength: r.profileStrength, tier: r.tier, dimensions: r.dimensions, isYou: true });
     setPublished(true); setScreen("dashboard");
+    logAudit({ kind: "assessment-completed" });
+    logAudit({ kind: "score-issued", profileStrength: r.profileStrength, tier: r.tier.name });
     toast("You are in the network. Your profile is live to employers, identity shielded.");
   }
 
@@ -829,8 +875,9 @@ function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leave
     {screen === "worth" && <GlobalWorth profile={profile} builders={builders} pipeline={pipeline} />}
     {screen === "community" && <Community builders={builders} pipeline={pipeline} squads={squads} onJoin={joinSquad} onLeave={leaveSquad} onForm={formSquad} />}
     {screen === "alchemist" && <ExperienceAlchemist profile={profile} />}
-    {screen === "settings" && <Settings builders={builders} onFairness={() => setScreen("fairness")} />}
+    {screen === "settings" && <Settings builders={builders} onFairness={() => setScreen("fairness")} onAudit={() => setScreen("audit")} logAudit={logAudit} />}
     {screen === "fairness" && <FairnessPosture onBack={() => setScreen("settings")} />}
+    {screen === "audit" && <AuditTrail audit={audit} onBack={() => setScreen("settings")} />}
   </Shell>;
 }
 
@@ -1421,7 +1468,7 @@ function SearchCard({ c, isRevealed, isShort, isIn, isSaved, budget, onShortlist
       ? <p style={{ fontSize: 14, color: T.ink, marginBottom: 12 }}>{c.summary}</p>
       : <div style={{ border: `1px dashed ${T.line}`, borderRadius: 8, padding: "10px 12px", marginBottom: 12, fontSize: 13, color: T.slate, background: T.paper }}>Role and summary are shielded. Request an interview to reveal them and commit to this builder.</div>}
     <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-      <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}><Btn kind="ghost" small onClick={() => onToggleSave(c)}>{isSaved ? "Saved" : "Save"}</Btn><ReviewLink what={`Search fit for ${c.handle}: ${c.fit}%`} /></div>
+      <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}><Btn kind="ghost" small onClick={() => onToggleSave(c)}>{isSaved ? "Saved" : "Save"}</Btn><ReviewLink what={`Search fit for ${c.handle}: ${c.fit}%`} source="employer" /></div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {!isRevealed && <Btn kind="ghost" small disabled={isIn} onClick={() => onShortlist({ ...c, monthlyUsd: Number(budget) })}>{isShort ? "Shortlisted" : "Shortlist"}</Btn>}
         {isRevealed
@@ -1492,7 +1539,7 @@ function Pipeline({ pipeline, move, openSow }) {
               {ci < 2 && <Btn small onClick={() => move(c, key, COLS[ci + 1][0])}>{COLS[ci + 1][1]} →</Btn>}
               {key === "sow" && <Btn small onClick={() => openSow(c)}>Generate SOW</Btn>}
             </div>
-            <div style={{ marginTop: 8 }}><ReviewLink what={`Pipeline stage for ${c.handle}: ${title}`} /></div>
+            <div style={{ marginTop: 8 }}><ReviewLink what={`Pipeline stage for ${c.handle}: ${title}`} source="employer" /></div>
           </Card>)}
           {pipeline[key].length === 0 && <div style={{ color: T.slate, fontSize: 12.5, padding: "6px 2px" }}>Empty</div>}
         </div>
@@ -1823,7 +1870,7 @@ export default function App() {
       <HumanReviewProvider logAudit={logAudit}>
         {view === "landing" && <div style={marketingFont}><LandingPage onSignInClick={toRole} /></div>}
         {view === "role" && <div style={marketingFont}><RoleSelectionPage onRoleSelect={r => setView(r === "builder" ? "candidate" : "employer")} onBack={() => setView("landing")} /></div>}
-        {view === "candidate" && <CandidateApp addBuilder={addBuilder} builders={builders} pipeline={pipeline} squads={squads} joinSquad={joinSquad} leaveSquad={leaveSquad} formSquad={formSquad} audit={audit} exit={() => setView("landing")} toRole={toRole} />}
+        {view === "candidate" && <CandidateApp addBuilder={addBuilder} builders={builders} pipeline={pipeline} squads={squads} joinSquad={joinSquad} leaveSquad={leaveSquad} formSquad={formSquad} audit={audit} logAudit={logAudit} exit={() => setView("landing")} toRole={toRole} />}
         {view === "employer" && <EmployerApp builders={builders} pipeline={pipeline} setPipeline={setPipeline} exit={() => setView("landing")} toRole={toRole} />}
       </HumanReviewProvider>
     </ToastProvider>
