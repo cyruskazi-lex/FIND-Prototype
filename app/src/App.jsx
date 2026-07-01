@@ -542,6 +542,90 @@ function Consent({ onNext, onBack }) {
   </div></Centered>;
 }
 
+// ---- Async elevator pitch recorder (candidate). NO MODEL ----
+// Browser MediaRecorder capture of camera + mic, a 60s countdown that auto-stops,
+// retake, and a playback preview. Recording is in-browser; upload and storage
+// are a backend step. (The interview uses pre-rendered clips, so there is no
+// live capture to reuse; this is built directly on MediaRecorder.)
+function PitchRecorder() {
+  const [phase, setPhase] = useState("idle"); // idle | recording | recorded | error
+  const [remaining, setRemaining] = useState(60);
+  const [error, setError] = useState("");
+  const liveRef = useRef(null);
+  const previewRef = useRef(null);
+  const m = useRef({ stream: null, recorder: null, chunks: [], url: null, timer: null, left: 60 });
+
+  const stopTracks = () => { if (m.current.stream) { m.current.stream.getTracks().forEach(t => t.stop()); m.current.stream = null; } };
+  function stop() {
+    if (m.current.timer) { clearInterval(m.current.timer); m.current.timer = null; }
+    if (m.current.recorder && m.current.recorder.state !== "inactive") { try { m.current.recorder.stop(); } catch { /* already stopped */ } }
+  }
+
+  useEffect(() => () => { stop(); stopTracks(); if (m.current.url) URL.revokeObjectURL(m.current.url); }, []);
+  useEffect(() => { if (phase === "recorded" && previewRef.current && m.current.url) previewRef.current.src = m.current.url; }, [phase]);
+
+  async function start() {
+    setError("");
+    if (m.current.url) { URL.revokeObjectURL(m.current.url); m.current.url = null; }
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setError("Your browser does not support in-browser recording. Try a recent Chrome, Edge, or Firefox.");
+      setPhase("error"); return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      m.current.stream = stream;
+      if (liveRef.current) { liveRef.current.srcObject = stream; liveRef.current.play?.().catch(() => {}); }
+      const rec = new MediaRecorder(stream);
+      m.current.recorder = rec; m.current.chunks = [];
+      rec.ondataavailable = e => { if (e.data && e.data.size) m.current.chunks.push(e.data); };
+      rec.onstop = () => {
+        const blob = new Blob(m.current.chunks, { type: m.current.chunks[0]?.type || "video/webm" });
+        m.current.url = URL.createObjectURL(blob);
+        stopTracks();
+        setPhase("recorded");
+      };
+      rec.start();
+      m.current.left = 60; setRemaining(60); setPhase("recording");
+      m.current.timer = setInterval(() => {
+        m.current.left -= 1; setRemaining(m.current.left);
+        if (m.current.left <= 0) stop();
+      }, 1000);
+    } catch {
+      setError("Camera and microphone access is needed to record. Check your browser permissions and try again.");
+      stopTracks(); setPhase("error");
+    }
+  }
+
+  function retake() {
+    if (m.current.url) { URL.revokeObjectURL(m.current.url); m.current.url = null; }
+    setRemaining(60); setPhase("idle");
+  }
+
+  const clock = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`;
+  const frame = { position: "relative", width: "100%", aspectRatio: "16 / 9", background: T.ink, borderRadius: 10, overflow: "hidden", border: `1px solid ${T.line}` };
+  const vid = { width: "100%", height: "100%", objectFit: "cover", display: "block" };
+
+  return <div>
+    <Label>60-second elevator pitch</Label>
+    <p style={{ color: T.slate, fontSize: 13.5, margin: "6px 0 12px" }}>Optional. Record a short intro in your own words. Strong profiles usually include one.</p>
+    <div style={frame}>
+      {phase === "recorded"
+        ? <video ref={previewRef} controls playsInline style={vid} />
+        : <video ref={liveRef} muted playsInline autoPlay style={{ ...vid, opacity: phase === "recording" ? 1 : 0.85 }} />}
+      {phase === "idle" && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#9FB0BC", fontSize: 13, fontFamily: F.mono, textAlign: "center", padding: 16 }}>Your camera preview appears here when you start</div>}
+      {phase === "recording" && <div style={{ position: "absolute", top: 10, right: 10, display: "flex", alignItems: "center", gap: 7, background: "rgba(12,26,38,0.72)", color: "#fff", borderRadius: 20, padding: "5px 11px", fontFamily: F.mono, fontSize: 12 }}><span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", background: T.alert }} />{clock}</div>}
+    </div>
+    <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      {phase === "idle" && <Btn small onClick={start}>Start recording</Btn>}
+      {phase === "recording" && <><Btn small kind="ghost" onClick={stop}>Stop</Btn><span style={{ fontFamily: F.mono, fontSize: 12, color: T.slate }}>Recording. Auto-stops at 0:00.</span></>}
+      {phase === "recorded" && <><Btn small kind="ghost" onClick={retake}>Retake</Btn><span style={{ fontFamily: F.mono, fontSize: 12, color: T.emerald }}>Pitch ready.</span></>}
+      {phase === "error" && <Btn small onClick={start}>Try again</Btn>}
+    </div>
+    {error && <div role="alert" style={{ marginTop: 10, color: T.alert, fontSize: 13 }}>{error}</div>}
+    <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Recording happens in your browser. Upload and storage are a backend step.</div>
+  </div>;
+}
+
 function Onboarding({ profile, setProfile, onNext, onBack }) {
   const [fileName, setFileName] = useState("");
   function readFile(e) { const f = e.target.files?.[0]; if (!f) return; setFileName(f.name); if (/\.(txt|md)$/i.test(f.name)) { const r = new FileReader(); r.onload = () => setProfile(p => ({ ...p, experience: (p.experience ? p.experience + "\n" : "") + r.result })); r.readAsText(f); } }
@@ -556,6 +640,8 @@ function Onboarding({ profile, setProfile, onNext, onBack }) {
       <Field label="Your experience, in your words" rows={6} value={profile.experience} onChange={v => setProfile(p => ({ ...p, experience: v }))} placeholder="What have you built, what did you handle, what went wrong and how did you fix it." />
       <div style={{ border: `1px dashed ${T.line}`, borderRadius: 10, padding: 16, textAlign: "center", background: T.paper }}><label style={{ cursor: "pointer", display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 6, color: T.slate, fontSize: 13 }}><span style={{ fontFamily: F.mono, color: T.emerald }}>upload CV</span><span>{fileName || "txt or md reads in now. PDF and docx parse on the backend."}</span><input type="file" accept=".txt,.md,.pdf,.docx" onChange={readFile} style={{ display: "none" }} /></label></div>
     </Card>
+    <div style={{ height: 14 }} />
+    <Card><PitchRecorder /></Card>
     <div style={{ marginTop: 16, marginBottom: 30 }}><Btn full disabled={!ready} onClick={onNext}>Continue</Btn><Hint show={!ready}>Add your role and a few sentences of experience to continue.</Hint></div>
   </div></Scroll>;
 }
