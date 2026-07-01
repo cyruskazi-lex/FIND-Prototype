@@ -39,13 +39,18 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 `;
 
+// All model calls (scoring, the copilots, the Experience Alchemist) go through
+// the provider-agnostic backend proxy. The browser never holds a provider key
+// and never talks to a provider directly. Throws on a non-OK response so each
+// caller's catch keeps the feature inert until a provider is configured.
 async function callClaude({ system, messages, expectJson }) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch("/api/claude", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, system, messages }),
+    body: JSON.stringify({ system, messages }),
   });
+  if (!res.ok) throw new Error("llm " + res.status);
   const data = await res.json();
-  const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
+  const text = (data.text || "").trim();
   if (!expectJson) return text;
   return JSON.parse(text.replace(/```json/g, "").replace(/```/g, "").trim());
 }
