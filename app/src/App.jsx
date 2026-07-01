@@ -90,6 +90,11 @@ const ACCOMMODATIONS = [
   { id: "textOnly", label: "Text-only interview", desc: "No camera or video is requested; you read each question and type your answer." },
   { id: "written", label: "Written interview", desc: "See all questions at once as a form, and answer at your own pace." },
 ];
+// Visible guardrails (Phase 4 G), stated at the point of use, not just the ethics page.
+const FIG_NOTE = "All figures computed in code. No number on this screen is model-generated.";
+const ZURI_NOTE = "Zuri narrates from evidence. She does not assert legal or financial fact.";
+const FigNote = () => <div style={{ marginTop: 16, fontFamily: F.mono, fontSize: 10.5, color: T.slate, borderTop: `1px solid ${T.mute}`, paddingTop: 10 }}>{FIG_NOTE}</div>;
+const ZuriNote = () => <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 10.5, color: T.slate }}>{ZURI_NOTE}</div>;
 const EVIDENCE = {
   "Technical depth": "Your experience and your answers about real bugs and decisions.",
   "Communication clarity": "How clearly and directly you respond in the interview.",
@@ -371,6 +376,7 @@ function Wallet({ builders, pipeline }) {
           </div>)}
         </div>}
     </div>
+    <FigNote />
     <div style={{ height: 30 }} />
   </div></Scroll>;
 }
@@ -848,6 +854,7 @@ function ExperienceAlchemist({ profile }) {
         <Btn kind="ghost" small onClick={copy}>Copy</Btn>
       </div>
       <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Saved locally in this prototype. Real persistence is a backend step.</div>
+      <ZuriNote />
     </Card></div>}
     <div style={{ height: 30 }} />
   </div></Scroll>;
@@ -920,6 +927,7 @@ function GlobalWorth({ profile, builders, pipeline }) {
       </div>
     </div>
     <div style={{ marginTop: 12, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Illustrative purchasing-power context, computed from a labelled cost-of-living index (New York = 100). Not live market data; no figure is model-generated.</div>
+    <FigNote />
     <div style={{ height: 30 }} />
   </div></Scroll>;
 }
@@ -985,6 +993,7 @@ function NegotiationCoach({ profile, builders, pipeline }) {
       </div>}
       {guide.note && <p style={{ marginTop: 14, fontSize: 13, color: T.slate }}>{guide.note}</p>}
       <div style={{ marginTop: 12, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Illustrative guidance from Zuri, not a quote or guarantee. You decide.</div>
+      <ZuriNote />
     </Card></div>}
     <div style={{ height: 30 }} />
   </div></Scroll>;
@@ -1870,6 +1879,7 @@ function Compliance({ active, sow, setSow }) {
       <Mini label="IP custody" body={sow.ip_clause} />
       <Mini label="Employer of Record" body={sow.eor_note} />
       <Mini label="Term" body={sow.term} />
+      <ZuriNote />
       <div style={{ marginTop: 14 }}><Btn kind="ghost" small onClick={() => setSow(null)}>Redraft</Btn></div>
     </Card>}
   </div></Scroll>;
@@ -1985,9 +1995,10 @@ function Finance({ pipeline }) {
           : zErr === "fail"
             ? <div style={{ marginTop: 10, color: T.alert, fontSize: 14, display: "flex", gap: 12, alignItems: "center" }}>Zuri did not respond. <Btn kind="ghost" small onClick={askEconomist}>Try again</Btn></div>
             : zNote
-              ? <><p style={{ marginTop: 12, fontSize: 14, lineHeight: 1.6 }}>{zNote}</p><div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Zuri narrates market context. The figures above are computed in code.</div></>
+              ? <><p style={{ marginTop: 12, fontSize: 14, lineHeight: 1.6 }}>{zNote}</p><ZuriNote /></>
               : <div style={{ marginTop: 12 }}><Btn kind="ghost" small onClick={askEconomist}>Is this budget competitive?</Btn></div>}
     </Card></div>
+    <FigNote />
     <div style={{ height: 30 }} />
   </div></Scroll>;
 }
