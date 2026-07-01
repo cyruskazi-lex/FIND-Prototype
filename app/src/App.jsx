@@ -94,6 +94,12 @@ const EVIDENCE = {
 };
 const composite = dims => { let s = 0, w = 0; dims.forEach(d => { const wt = WEIGHTS[d.name] ?? 0.15; s += d.score * wt; w += wt; }); return Math.round(s / (w || 1)); };
 const tierOf = s => s >= 85 ? { name: "Top 1%", color: T.emerald } : s >= 70 ? { name: "Gold", color: T.brass } : s >= 50 ? { name: "Silver", color: T.slate } : { name: "Bronze", color: T.alert };
+// Score bands, matching the scoring model. Pure function, no model.
+const BAND = s => s >= 90 ? { label: "Exceptional", range: "90-100", why: "an exceptional, rare result" }
+  : s >= 75 ? { label: "Strong", range: "75-89", why: "strong and ready for enterprise work" }
+  : s >= 60 ? { label: "Solid with gaps", range: "60-74", why: "solid, with clear and nameable gaps" }
+  : s >= 40 ? { label: "Real gaps", range: "40-59", why: "real gaps that would affect hiring" }
+  : { label: "Significant gaps", range: "below 40", why: "significant gaps to close before global roles" };
 const MODULES = {
   "Communication clarity": { id: "culture", title: "Culture Shock Simulator", blurb: "Western corporate communication: async updates, proactive clarification, direct feedback.", pts: 300 },
   "Async and remote readiness": { id: "async", title: "Async Operating Rhythm", blurb: "Run a remote day across time zones without losing momentum.", pts: 250 },
@@ -980,7 +986,7 @@ function Interview({ profile, onBack, onComplete }) {
       const sys = "You are the Fumana scoring model, powered by Telos. Using the builder's experience and interview transcript, score six dimensions for global remote enterprise work: " + DIMENSIONS.join(", ") + ". Technical depth draws on experience and technical answers. The others draw on the interview, not the resume alone. Score each 0 to 100 with a fair, specific one-sentence rationale grounded in what they said. Be honest, name real gaps. Return ONLY JSON, no fences. Shape: {\"dimensions\":[{\"name\":string,\"score\":number,\"rationale\":string}]}. Use exactly those six names.";
       const out = await callClaude({ system: sys, messages: [{ role: "user", content: `Experience:\n${profile.experience}\n\nInterview:\n${transcript}` }], expectJson: true });
       const dims = out.dimensions || []; const cs = composite(dims);
-      onComplete({ dimensions: dims, profileStrength: cs, tier: tierOf(cs), weakest: [...dims].sort((a, b) => a.score - b.score)[0] });
+      onComplete({ dimensions: dims, profileStrength: cs, tier: tierOf(cs), weakest: [...dims].sort((a, b) => a.score - b.score)[0], transcript: finalQa });
     } catch { setErr(true); }
   }
 
@@ -1028,6 +1034,8 @@ function Interview({ profile, onBack, onComplete }) {
 function Dashboard({ profile, result, onUpskill, published }) {
   const tier = result.tier; const rec = MODULES[result.weakest?.name] || MODULES["Technical depth"];
   const [zuri, setZuri] = useState(""); const [zb, setZb] = useState(false); const [showCalc, setShowCalc] = useState(false);
+  const [openDims, setOpenDims] = useState({});
+  const transcript = result.transcript || [];
   async function askZuri() { setZb(true); try { const sys = "You are Zuri, the career copilot inside Fumana. In three to four warm, direct sentences, tell this builder the single most valuable next move to raise their tier, grounded in their weakest dimension. No hype, no em dashes."; setZuri(await callClaude({ system: sys, messages: [{ role: "user", content: `Profile strength ${result.profileStrength}, tier ${tier.name}. Weakest: ${result.weakest?.name} at ${result.weakest?.score}. Role ${profile.role || "engineer"}.` }], expectJson: false })); } catch { setZuri("Zuri is unavailable right now."); } setZb(false); }
   return <Scroll><div style={{ maxWidth: 860, margin: "0 auto" }} className="rise">
     {published && <div style={{ marginBottom: 16, background: "rgba(6,110,90,0.06)", border: `1px solid ${T.emerald}`, borderRadius: 10, padding: "11px 14px", fontSize: 13.5, color: T.vault }}>✓ You are now in the network, identity shielded. Switch to the employer side and search to find yourself.</div>}
@@ -1037,7 +1045,25 @@ function Dashboard({ profile, result, onUpskill, published }) {
     </div>
     {showCalc && <div style={{ marginTop: 14 }}><Card pad={16} accent={T.brass}><Label>How this was calculated</Label><p style={{ fontSize: 13.5, color: T.slate, margin: "8px 0 10px" }}>Each dimension is scored 0 to 100 by an AI model from your experience and interview. Profile Strength is their weighted average.</p><div style={{ display: "grid", gap: 5 }}>{result.dimensions.map((d, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", fontFamily: F.mono, fontSize: 12, color: T.slate }}><span>{d.name}</span><span>{d.score} × {WEIGHTS[d.name]?.toFixed(2)}</span></div>)}<div style={{ display: "flex", justifyContent: "space-between", fontFamily: F.mono, fontSize: 12.5, color: T.emerald, borderTop: `1px solid ${T.mute}`, paddingTop: 6, marginTop: 2 }}><span>weighted average</span><span>{result.profileStrength}</span></div></div></Card></div>}
     <div className="dash" style={{ marginTop: 18 }}>
-      <Card><Label>Dimension scores</Label><div style={{ display: "grid", gap: 14, marginTop: 14 }}>{result.dimensions.map((d, i) => <div key={i}><div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}><span style={{ color: T.ink, fontWeight: 500 }}>{d.name}</span><span style={{ fontFamily: F.mono, color: d.score < 60 ? T.alert : T.ink }}>{d.score}/100</span></div><div style={{ height: 7, background: T.mute, borderRadius: 4, marginTop: 5 }}><div style={{ height: "100%", width: `${d.score}%`, background: d.score < 60 ? T.alert : T.emerald, borderRadius: 4, animation: "grow 1s ease" }} /></div><div style={{ fontSize: 12, color: T.slate, marginTop: 4 }}>{d.rationale}</div></div>)}</div></Card>
+      <Card><Label>Dimension scores</Label><div style={{ display: "grid", gap: 18, marginTop: 14 }}>{result.dimensions.map((d, i) => {
+        const b = BAND(d.score); const open = openDims[i]; const low = d.score < 60;
+        return <div key={i}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, fontSize: 14 }}><span style={{ color: T.ink, fontWeight: 500 }}>{d.name}</span><span style={{ fontFamily: F.mono, color: low ? T.alert : T.ink }}>{d.score}/100</span></div>
+          <div style={{ height: 7, background: T.mute, borderRadius: 4, marginTop: 5 }}><div style={{ height: "100%", width: `${d.score}%`, background: low ? T.alert : T.emerald, borderRadius: 4, animation: "grow 1s ease" }} /></div>
+          <div style={{ marginTop: 7 }}><span style={{ fontFamily: F.mono, fontSize: 10.5, color: low ? T.alert : T.emerald, border: `1px solid ${low ? T.alert : T.emerald}`, borderRadius: 4, padding: "1px 7px" }}>{b.label} . {b.range}</span></div>
+          <div style={{ fontSize: 12.5, color: T.slate, marginTop: 6 }}><b style={{ color: T.ink }}>Why this score:</b> {d.score} lands in the {b.label.toLowerCase()} band ({b.range}), {b.why}.</div>
+          <div style={{ fontSize: 12.5, color: T.slate, marginTop: 4 }}><b style={{ color: T.ink }}>Rationale:</b> {d.rationale}</div>
+          <button onClick={() => setOpenDims(o => ({ ...o, [i]: !o[i] }))} aria-expanded={!!open} style={{ marginTop: 6, fontFamily: F.mono, fontSize: 11, color: T.emerald, background: "transparent", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>{open ? "hide evidence" : "show evidence"}</button>
+          {open && <div style={{ marginTop: 8, background: T.paper, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11 }}>
+            <div style={{ fontFamily: F.mono, fontSize: 10, color: T.slate, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 7 }}>Evidence . {EVIDENCE[d.name]}</div>
+            {d.name === "Technical depth"
+              ? <div style={{ fontSize: 13, color: T.ink, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{profile.experience || "No experience text provided."}</div>
+              : (transcript.length
+                ? <div style={{ display: "grid", gap: 9 }}>{transcript.map((x, k) => <div key={k}><div style={{ fontSize: 12, color: T.slate }}><b style={{ color: T.emerald, fontFamily: F.mono, fontSize: 11 }}>Q{k + 1}</b> {x.q}</div><div style={{ fontSize: 13, color: T.ink, marginTop: 2 }}>{x.a}</div></div>)}</div>
+                : <div style={{ fontSize: 13, color: T.slate }}>Interview answers are not available for this profile.</div>)}
+          </div>}
+        </div>;
+      })}</div></Card>
       <div style={{ display: "grid", gap: 16, alignContent: "start" }}>
         <Card accent={T.brass}><Label>Recommended next step</Label><div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 17, marginTop: 8 }}>{rec.title}</div><p style={{ fontSize: 13.5, color: T.slate, margin: "6px 0 12px" }}>{rec.blurb}</p><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontFamily: F.mono, fontSize: 12, color: T.emerald }}>+{rec.pts} pts</span><Btn small onClick={onUpskill}>Start module</Btn></div><div style={{ marginTop: 10, fontSize: 12, color: T.slate }}>Weakest dimension: <b>{result.weakest?.name}</b>.</div></Card>
         <Card accent={zuri ? T.emerald : T.line}><Label>Zuri . career copilot</Label>{!zuri && !zb && <div style={{ marginTop: 10 }}><Btn kind="ghost" small onClick={askZuri}>Ask Zuri what to do next</Btn></div>}{zb && <div style={{ marginTop: 12 }}><Spinner label="Zuri is thinking..." /></div>}{zuri && <p style={{ marginTop: 10, fontSize: 14, lineHeight: 1.6 }}>{zuri}</p>}</Card>
