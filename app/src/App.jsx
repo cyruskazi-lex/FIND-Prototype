@@ -1363,15 +1363,38 @@ function Pipeline({ pipeline, move, openSow }) {
 }
 
 function Compliance({ active, sow, setSow }) {
-  const [busy, setBusy] = useState(false); const [err, setErr] = useState(false);
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   if (!active) return <Scroll><div style={{ maxWidth: 760, margin: "0 auto" }} className="rise"><Card><p style={{ color: T.slate, fontSize: 14 }}>Move a candidate to SOW pending and select Generate SOW to open the compliance hub.</p></Card></div></Scroll>;
-  async function gen() { setBusy(true); setErr(false); try { const sys = "You are the Fumana procurement engine acting as Employer of Record. Draft a concise Statement of Work for an enterprise client engaging a vetted builder through Fumana. Fumana is the legal EOR and handles IP assignment and local tax remittance. Return ONLY JSON, no fences. Shape: {\"title\":string,\"scope\":[string],\"deliverables\":[string],\"ip_clause\":string,\"eor_note\":string,\"term\":string}. Keep each line tight. No em dashes. Do not assert specific tax rates."; const out = await callClaude({ system: sys, messages: [{ role: "user", content: `Builder: ${active.handle}, ${active.role}. Monthly USD ${active.monthlyUsd}. Context: ${active.summary}` }], expectJson: true }); setSow(out); } catch (e) { setErr(true); } setBusy(false); }
+  async function gen() {
+    setBusy(true); setErr("");
+    try {
+      const sys = "You are the Fumana procurement engine acting as Employer of Record. Draft a concise Statement of Work for an enterprise client engaging a vetted builder through Fumana. Fumana acts as the IP custodian and as the legal Employer of Record, assuming local employment liability and tax remittance. Use general, honest language only. Do not assert specific tax rates and do not make jurisdiction-specific legal claims. Return ONLY JSON, no fences. Shape: {\"title\":string,\"scope\":[string],\"deliverables\":[string],\"ip_clause\":string,\"eor_note\":string,\"term\":string}. Keep each line tight. No em dashes.";
+      const out = await callClaude({ system: sys, messages: [{ role: "user", content: `Builder: ${active.handle}, ${active.role}. Monthly USD ${active.monthlyUsd}. Context: ${active.summary}` }], expectJson: true });
+      setSow(out);
+    } catch (e) {
+      setErr(String(e).includes("501") ? "config" : "fail");
+    }
+    setBusy(false);
+  }
   return <Scroll><div style={{ maxWidth: 820, margin: "0 auto" }} className="rise">
     <Eyebrow>Legal and compliance hub</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Statement of Work for {active.handle}</h2>
-    <p style={{ color: T.slate, fontSize: 15, marginBottom: 14 }}>Fumana signs as Employer of Record and assumes local employment liability, tax remittance, and IP assignment.</p>
-    <div style={{ marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 8, fontFamily: F.mono, fontSize: 12, color: T.emerald, border: `1px solid ${T.emerald}`, borderRadius: 6, padding: "5px 11px" }}>✓ liability assumed</div>
-    {!sow && <div>{busy ? <Spinner label="Compliance agent is drafting the SOW..." /> : <Btn onClick={gen}>Generate localized SOW</Btn>}{err && <div style={{ marginTop: 12, color: T.alert, fontSize: 14, display: "flex", gap: 12, alignItems: "center" }}>Draft did not complete. <Btn kind="ghost" small onClick={gen}>Run again</Btn></div>}</div>}
-    {sow && <Card accent={T.brass}><div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 18 }}>{sow.title}</div><SowList label="Scope" items={sow.scope} /><SowList label="Deliverables" items={sow.deliverables} /><Mini label="IP assignment" body={sow.ip_clause} /><Mini label="Employer of Record" body={sow.eor_note} /><Mini label="Term" body={sow.term} /><div style={{ marginTop: 14 }}><Btn kind="ghost" small onClick={() => setSow(null)}>Redraft</Btn></div></Card>}
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 14 }}>Fumana signs as Employer of Record and assumes local employment liability, tax remittance, and IP custody.</p>
+    <div style={{ marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 8, fontFamily: F.mono, fontSize: 12, color: T.emerald, border: `1px solid ${T.emerald}`, borderRadius: 6, padding: "5px 11px" }}>&#10003; liability assumed</div>
+    {!sow && <div>
+      {busy ? <Spinner label="Zuri is drafting the SOW..." /> : <Btn onClick={gen}>Generate localized SOW</Btn>}
+      {!busy && err === "config" && <div style={{ marginTop: 12, fontSize: 13.5, color: T.slate }}>Zuri's SOW drafting is ready and wired through the model proxy. It lights up the moment a model provider is connected.</div>}
+      {!busy && err === "fail" && <div style={{ marginTop: 12, color: T.alert, fontSize: 14, display: "flex", gap: 12, alignItems: "center" }}>Draft did not complete. <Btn kind="ghost" small onClick={gen}>Run again</Btn></div>}
+    </div>}
+    {sow && <Card accent={T.brass}>
+      <div style={{ marginBottom: 14, background: T.paper, border: `1px solid ${T.brass}`, borderRadius: 8, padding: "10px 12px", fontSize: 12.5, color: T.slate }}><b style={{ color: T.ink }}>Draft only.</b> A starting point for legal review, not a binding document. General terms; a lawyer confirms specifics per jurisdiction.</div>
+      <div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 18 }}>{sow.title}</div>
+      <SowList label="Scope" items={sow.scope} />
+      <SowList label="Deliverables" items={sow.deliverables} />
+      <Mini label="IP custody" body={sow.ip_clause} />
+      <Mini label="Employer of Record" body={sow.eor_note} />
+      <Mini label="Term" body={sow.term} />
+      <div style={{ marginTop: 14 }}><Btn kind="ghost" small onClick={() => setSow(null)}>Redraft</Btn></div>
+    </Card>}
   </div></Scroll>;
 }
 const SowList = ({ label, items }) => <div style={{ marginTop: 12 }}><div style={{ color: T.emerald, fontSize: 12, fontFamily: F.mono, marginBottom: 6 }}>{label}</div><div style={{ display: "grid", gap: 6 }}>{(items || []).map((it, i) => <div key={i} style={{ fontSize: 14, display: "flex", gap: 8 }}><span style={{ color: T.brass }}>.</span><span>{it}</span></div>)}</div></div>;
