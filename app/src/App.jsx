@@ -84,6 +84,12 @@ const usd = n => "$" + Math.round(n).toLocaleString("en-US");
 // ---- scoring model ----
 const WEIGHTS = { "Technical depth": 0.30, "Communication clarity": 0.16, "Async and remote readiness": 0.16, "Professionalism": 0.14, "Collaboration": 0.12, "Problem solving": 0.12 };
 const DIMENSIONS = Object.keys(WEIGHTS);
+// Assessment accommodations (Phase 4). Any combination; honored in the interview.
+const ACCOMMODATIONS = [
+  { id: "extraTime", label: "Extra time", desc: "No time pressure on your answers; there is no auto-stop." },
+  { id: "textOnly", label: "Text-only interview", desc: "No camera or video is requested; you read each question and type your answer." },
+  { id: "written", label: "Written interview", desc: "See all questions at once as a form, and answer at your own pace." },
+];
 const EVIDENCE = {
   "Technical depth": "Your experience and your answers about real bugs and decisions.",
   "Communication clarity": "How clearly and directly you respond in the interview.",
@@ -472,6 +478,7 @@ const Toggle = ({ on, onClick, label }) => <button type="button" role="switch" a
 const AUDIT_VIEW = {
   "assessment-completed": () => ({ label: "Assessment completed", desc: "You completed the AI interview with Zuri." }),
   "score-issued": e => ({ label: "Score issued", desc: `Profile Strength ${e.profileStrength} issued, ${e.tier} tier.` }),
+  "accommodations": e => ({ label: "Accommodations selected", desc: `${ACCOMMODATIONS.filter(a => e[a.id]).map(a => a.label.toLowerCase()).join(", ") || "none"}.` }),
   "contest": e => ({ label: "Score contested", desc: `You contested your ${e.dimension} score. Reference ${e.ref}.` }),
   "human-review": e => ({ label: "Human review requested", desc: `${e.decision}. Reference ${e.ref}.` }),
   "data-export": () => ({ label: "Data exported", desc: "You downloaded a copy of the data Fumana holds about you." }),
@@ -843,6 +850,7 @@ function NegotiationCoach({ profile, builders, pipeline }) {
 function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leaveSquad, formSquad, audit, logAudit, exit, toRole }) {
   const [screen, setScreen] = useState("signin");
   const [profile, setProfile] = useState({ name: "", role: "", city: "", experience: "" });
+  const [accommodations, setAccommodations] = useState({ extraTime: false, textOnly: false, written: false });
   const [result, setResult] = useState(null);
   const [points, setPoints] = useState(0);
   const [published, setPublished] = useState(false);
@@ -865,9 +873,9 @@ function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leave
     {screen === "signin" && <AuthFormPage role="builder" onBack={toRole} onAuthenticated={() => setScreen("consent")} />}
     {screen === "consent" && <Consent onNext={() => setScreen("onboarding")} onBack={() => setScreen("signin")} />}
     {screen === "onboarding" && <Onboarding profile={profile} setProfile={setProfile} onNext={() => setScreen("assessinfo")} onBack={() => setScreen("consent")} />}
-    {screen === "assessinfo" && <AssessInfo onOptIn={() => setScreen("interview")} onOptOut={() => setScreen("humanreview")} onBack={() => setScreen("onboarding")} />}
+    {screen === "assessinfo" && <AssessInfo accommodations={accommodations} setAccommodations={setAccommodations} onOptIn={() => { if (accommodations.extraTime || accommodations.textOnly || accommodations.written) logAudit({ kind: "accommodations", ...accommodations }); setScreen("interview"); }} onOptOut={() => setScreen("humanreview")} onBack={() => setScreen("onboarding")} />}
     {screen === "humanreview" && <HumanReview onSwitch={() => setScreen("interview")} />}
-    {screen === "interview" && <Interview profile={profile} onBack={() => setScreen("assessinfo")} onComplete={finish} />}
+    {screen === "interview" && <Interview profile={profile} accommodations={accommodations} onBack={() => setScreen("assessinfo")} onComplete={finish} />}
     {screen === "dashboard" && result && <Dashboard profile={profile} result={result} onUpskill={() => setScreen("upskill")} published={published} audit={audit} logAudit={logAudit} />}
     {screen === "upskill" && result && <Upskill result={result} points={points} setPoints={setPoints} />}
     {screen === "applications" && <Applications builders={builders} pipeline={pipeline} />}
@@ -1002,7 +1010,7 @@ function Onboarding({ profile, setProfile, onNext, onBack }) {
   </div></Scroll>;
 }
 
-function AssessInfo({ onOptIn, onOptOut, onBack }) {
+function AssessInfo({ onOptIn, onOptOut, onBack, accommodations, setAccommodations }) {
   const [ok, setOk] = useState(false);
   return <Scroll><div style={{ maxWidth: 680, margin: "0 auto" }} className="rise">
     <Back onClick={onBack} /><Eyebrow>Step 3 of 4 . How you are assessed</Eyebrow>
@@ -1018,6 +1026,17 @@ function AssessInfo({ onOptIn, onOptOut, onBack }) {
       <Li>Your Profile Strength is a weighted average computed by the fixed formula above.</Li>
       <Li>Scores are a starting point, not a verdict. You can retake the interview.</Li>
     </ul></Card>
+    <div style={{ height: 14 }} />
+    <Card><Label>Accommodations</Label>
+      <p style={{ fontSize: 13.5, color: T.slate, margin: "8px 0 12px" }}>Choose any that help you show your real ability. Select as many as you need.</p>
+      <div style={{ display: "grid", gap: 11 }}>
+        {ACCOMMODATIONS.map(a => <label key={a.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
+          <input type="checkbox" checked={!!accommodations[a.id]} onChange={e => setAccommodations(s => ({ ...s, [a.id]: e.target.checked }))} style={{ marginTop: 3 }} />
+          <span><span style={{ fontWeight: 600, fontSize: 14 }}>{a.label}</span><div style={{ color: T.slate, fontSize: 13 }}>{a.desc}</div></span>
+        </label>)}
+      </div>
+      <div style={{ marginTop: 14, fontSize: 13.5, color: T.ink, borderLeft: `3px solid ${T.emerald}`, paddingLeft: 11, lineHeight: 1.5 }}>Accommodations do not lower the bar. They remove barriers to showing real ability.</div>
+    </Card>
     <div style={{ height: 14 }} />
     <Card accent={T.brass}><Label>Your rights</Label><ul style={{ listStyle: "none", display: "grid", gap: 9, marginTop: 12, fontSize: 14 }}>
       <Li>You can decline AI assessment and request a human reviewer instead.</Li>
@@ -1120,19 +1139,25 @@ function VideoStage({ src, autoPlay, playing, onPlay, onStop }) {
   </div>;
 }
 
-function Interview({ profile, onBack, onComplete }) {
+function Interview({ profile, accommodations, onBack, onComplete }) {
   // Scripted video interview: an intro clip, then five question clips. Zuri's
   // voice is in each clip; the candidate answers each in turn. Scoring runs on
-  // the collected transcript, unchanged.
-  const [phase, setPhase] = useState("ready"); // ready | intro | qa | scoring
+  // the collected transcript, unchanged. Accommodations are honored: text-only
+  // drops the video for a pure-text path, written shows all questions as one
+  // form, and extra time confirms the (already untimed) no-auto-stop path.
+  const acc = accommodations || {};
+  const [phase, setPhase] = useState("ready"); // ready | intro | qa | written | scoring
   const [idx, setIdx] = useState(0);
   const [qa, setQa] = useState([]);
   const [answer, setAnswer] = useState("");
+  const [wAns, setWAns] = useState({});
   const [playing, setPlaying] = useState(false);
   const [err, setErr] = useState(false);
   const total = INTERVIEW_SCRIPT.length;
   const captionFor = i => INTERVIEW_SCRIPT[i].text || `Interview question ${i + 1}`;
   const last = idx + 1 >= total;
+  const activeAcc = ACCOMMODATIONS.filter(a => acc[a.id]);
+  const ta = { width: "100%", background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11, fontSize: 14, resize: "vertical" };
 
   function submit() {
     if (answer.trim().length < 4) return;
@@ -1140,6 +1165,12 @@ function Interview({ profile, onBack, onComplete }) {
     setQa(nextQa); setAnswer(""); setPlaying(false);
     if (last) { score(nextQa); return; }
     setIdx(idx + 1);
+  }
+  const writtenReady = INTERVIEW_SCRIPT.every((_, i) => (wAns[i] || "").trim().length >= 4);
+  function submitWritten() {
+    if (!writtenReady) return;
+    const finalQa = INTERVIEW_SCRIPT.map((q, i) => ({ q: captionFor(i), a: (wAns[i] || "").trim() }));
+    setQa(finalQa); score(finalQa);
   }
   async function score(finalQa) {
     setPhase("scoring"); setErr(false);
@@ -1160,13 +1191,14 @@ function Interview({ profile, onBack, onComplete }) {
     <Back onClick={onBack} />
     <div style={{ textAlign: "center", marginBottom: 16 }}>
       <Eyebrow>Step 4 of 4 . Interview with Zuri</Eyebrow>
-      <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>A short conversation, not a form</h2>
-      <p style={{ color: T.slate, fontSize: 15, maxWidth: 520, margin: "0 auto" }}>Zuri asks {total} questions on camera. Watch each one, then answer in your own words.</p>
+      <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>{acc.written ? "Answer at your own pace" : "A short conversation, not a form"}</h2>
+      <p style={{ color: T.slate, fontSize: 15, maxWidth: 520, margin: "0 auto" }}>{acc.written ? `All ${total} questions, shown together. Answer each in your own words.` : acc.textOnly ? `Zuri asks ${total} questions. Read each one, then answer in your own words.` : `Zuri asks ${total} questions on camera. Watch each one, then answer in your own words.`}</p>
     </div>
+    {activeAcc.length > 0 && <div style={{ maxWidth: 560, margin: "0 auto 16px", background: "rgba(6,110,90,0.06)", border: `1px solid ${T.emerald}`, borderRadius: 10, padding: "9px 13px", fontFamily: F.mono, fontSize: 11.5, color: T.vault, textAlign: "center" }}>Accommodations on: {activeAcc.map(a => a.label.toLowerCase()).join(", ")}</div>}
 
     {phase === "ready" && <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
-      <p style={{ color: T.slate, fontSize: 14 }}>Zuri will introduce herself, then ask her first question.</p>
-      <Btn onClick={() => { setPhase("intro"); }}>Begin interview with Zuri</Btn>
+      <p style={{ color: T.slate, fontSize: 14 }}>{acc.written ? "All questions will be shown together as a form." : acc.textOnly ? "The questions will be shown as text, one at a time." : "Zuri will introduce herself, then ask her first question."}</p>
+      <Btn onClick={() => setPhase(acc.written ? "written" : acc.textOnly ? "qa" : "intro")}>Begin interview with Zuri</Btn>
     </div>}
 
     {phase === "intro" && <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
@@ -1176,13 +1208,21 @@ function Interview({ profile, onBack, onComplete }) {
 
     {phase === "qa" && <div style={{ display: "grid", gap: 14, justifyItems: "center" }}>
       <div style={{ fontFamily: F.mono, fontSize: 11, color: T.slate }}>question {idx + 1} of {total}</div>
-      <VideoStage key={INTERVIEW_SCRIPT[idx].id} src={INTERVIEW_SCRIPT[idx].video} autoPlay playing={playing} onPlay={() => setPlaying(true)} onStop={() => setPlaying(false)} />
+      {!acc.textOnly && <VideoStage key={INTERVIEW_SCRIPT[idx].id} src={INTERVIEW_SCRIPT[idx].video} autoPlay playing={playing} onPlay={() => setPlaying(true)} onStop={() => setPlaying(false)} />}
       {INTERVIEW_SCRIPT[idx].text && <div style={{ maxWidth: 520, textAlign: "center", fontSize: 15 }}><b style={{ color: T.emerald, fontFamily: F.mono, fontSize: 12 }}>ZURI</b> . {INTERVIEW_SCRIPT[idx].text}</div>}
       <div style={{ width: "100%", maxWidth: 560 }}>
         <textarea rows={3} value={answer} onChange={e => setAnswer(e.target.value)} placeholder="Answer in a few honest sentences." style={{ width: "100%", background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11, fontSize: 14, resize: "vertical" }} />
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}><Btn small disabled={answer.trim().length < 4} onClick={submit}>{last ? "Finish and score" : "Send answer"}</Btn></div>
       </div>
       {answered}
+    </div>}
+
+    {phase === "written" && <div style={{ display: "grid", gap: 16, width: "100%", maxWidth: 620, margin: "0 auto" }}>
+      {INTERVIEW_SCRIPT.map((q, i) => <div key={q.id}>
+        <div style={{ fontSize: 14, marginBottom: 6 }}><b style={{ color: T.emerald, fontFamily: F.mono, fontSize: 12 }}>Q{i + 1}</b> {captionFor(i)}</div>
+        <textarea rows={3} value={wAns[i] || ""} onChange={e => setWAns(a => ({ ...a, [i]: e.target.value }))} placeholder="Answer in a few honest sentences." style={ta} />
+      </div>)}
+      <div style={{ display: "flex", justifyContent: "flex-end" }}><Btn disabled={!writtenReady} onClick={submitWritten}>Finish and score</Btn></div>
     </div>}
 
     {phase === "scoring" && <div style={{ display: "flex", justifyContent: "center" }}>{err
