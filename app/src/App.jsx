@@ -1072,12 +1072,27 @@ const COLS = [["shortlisted", "Shortlisted"], ["interviewing", "Interviewing"], 
 function Pipeline({ pipeline, move, openSow }) {
   const empty = COLS.every(([k]) => pipeline[k].length === 0);
   return <Scroll><div style={{ maxWidth: 980, margin: "0 auto" }} className="rise">
-    <Eyebrow>Pipeline</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 14px" }}>Move candidates toward a signed SOW</h2>
-    {empty && <Card><p style={{ color: T.slate, fontSize: 14 }}>Your pipeline is empty. Search the network and add candidates to begin.</p></Card>}
-    {!empty && <div className="kanban">{COLS.map(([key, title], ci) => <div key={key} style={{ background: T.paper, border: `1px solid ${T.line}`, borderRadius: 12, padding: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}><Label>{title}</Label><span style={{ fontFamily: F.mono, fontSize: 11, color: T.slate }}>{pipeline[key].length}</span></div>
-      <div style={{ display: "grid", gap: 10 }}>{pipeline[key].map((c, i) => <Card key={i} pad={14}><div style={{ fontWeight: 600, fontSize: 14 }}>{c.handle}</div><div style={{ color: T.slate, fontSize: 12.5, marginBottom: 8 }}>{c.role}</div><div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{ci > 0 && <Btn kind="ghost" small onClick={() => move(c, key, COLS[ci - 1][0])}>← {COLS[ci - 1][1]}</Btn>}{ci < 2 && <Btn small onClick={() => move(c, key, COLS[ci + 1][0])}>{COLS[ci + 1][1]} →</Btn>}{key === "sow" && <Btn small onClick={() => openSow(c)}>Generate SOW</Btn>}</div></Card>)}{pipeline[key].length === 0 && <div style={{ color: T.slate, fontSize: 12.5, padding: "6px 2px" }}>Empty</div>}</div>
-    </div>)}</div>}
+    <Eyebrow>Talent Pipeline</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Move candidates toward a signed SOW</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 16 }}>Shortlisted builders stay identity-shielded. Moving one to Interviewing reveals their role, the same reveal-and-interview gate as search.</p>
+    {empty && <Card><p style={{ color: T.slate, fontSize: 14 }}>Your pipeline is empty. Search the network, then shortlist or request an interview to begin.</p></Card>}
+    {!empty && <div className="kanban">{COLS.map(([key, title], ci) => {
+      const shielded = key === "shortlisted";
+      return <div key={key} style={{ background: T.paper, border: `1px solid ${T.line}`, borderRadius: 12, padding: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}><Label>{title}</Label><span style={{ fontFamily: F.mono, fontSize: 11, color: T.slate }}>{pipeline[key].length}</span></div>
+        <div style={{ display: "grid", gap: 10 }}>
+          {pipeline[key].map((c, i) => <Card key={i} pad={14}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}><div style={{ fontWeight: 600, fontSize: 14 }}>{c.handle}</div>{typeof c.fit === "number" && <span style={{ fontFamily: F.mono, fontSize: 11, color: T.emerald }}>{c.fit}%</span>}</div>
+            <div style={{ fontSize: 12.5, marginTop: 3, marginBottom: 8, color: T.slate }}>{shielded ? <span style={{ fontFamily: F.mono, fontSize: 11 }}>identity shielded</span> : c.role}</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {ci > 0 && <Btn kind="ghost" small onClick={() => move(c, key, COLS[ci - 1][0])}>← {COLS[ci - 1][1]}</Btn>}
+              {ci < 2 && <Btn small onClick={() => move(c, key, COLS[ci + 1][0])}>{COLS[ci + 1][1]} →</Btn>}
+              {key === "sow" && <Btn small onClick={() => openSow(c)}>Generate SOW</Btn>}
+            </div>
+          </Card>)}
+          {pipeline[key].length === 0 && <div style={{ color: T.slate, fontSize: 12.5, padding: "6px 2px" }}>Empty</div>}
+        </div>
+      </div>;
+    })}</div>}
   </div></Scroll>;
 }
 
