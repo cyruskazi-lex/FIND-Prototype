@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, createContext, useContext } from "react";
 import zuriFace from "./assets/zuri/zuri-face.png";
 import introVideo from "./assets/zuri/zuri-intro.mp4";
 import q1Video from "./assets/zuri/zuri-q1.mp4";
@@ -36,6 +36,28 @@ textarea,input{font-family:'Inter',sans-serif}
 @media(max-width:760px){.row2,.dash,.mods,.kanban,.split,.doors{grid-template-columns:1fr}}
 button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #066E5A;outline-offset:2px}
 @keyframes zuriPulse{0%{box-shadow:0 0 0 2px rgba(6,110,90,0.55),0 0 0 5px rgba(6,110,90,0.16)}50%{box-shadow:0 0 0 3px rgba(6,110,90,0.30),0 0 0 15px rgba(6,110,90,0)}100%{box-shadow:0 0 0 2px rgba(6,110,90,0.55),0 0 0 5px rgba(6,110,90,0.16)}}
+@keyframes toastin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+/* Carbon shell: dark header + dark left side nav, one shared component */
+.fshell{height:100dvh;display:grid;grid-template-columns:248px 1fr;grid-template-rows:52px 1fr;grid-template-areas:"head head" "side main"}
+.fshell.noNav{grid-template-columns:1fr;grid-template-areas:"head" "main"}
+.fhead{grid-area:head;display:flex;align-items:center;gap:12px;background:#0C1A26;color:#EEF3F8;padding:0 16px}
+.fbrand{font-family:'Hanken Grotesk',sans-serif;font-weight:800;font-size:18px;letter-spacing:3px;background:none;border:none;color:#fff;cursor:pointer;padding:0}
+.fside{grid-area:side;background:#0C1A26;border-right:1px solid #12222E;display:flex;flex-direction:column;padding:10px 0;overflow-y:auto}
+.fnav{text-align:left;background:none;border:none;border-left:3px solid transparent;color:#9FB0BC;font-family:'Inter',sans-serif;font-size:13.5px;padding:11px 18px;cursor:pointer;white-space:nowrap}
+.fnav:hover{background:#12222E;color:#fff}
+.fnav.on{background:#12222E;border-left-color:#066E5A;color:#fff;font-weight:600}
+.fmain{grid-area:main;min-height:0;overflow-y:auto;background:#F2F4F7}
+.fbot{display:none}
+.ftoasts{position:fixed;top:64px;right:16px;z-index:70;display:flex;flex-direction:column;gap:8px;max-width:calc(100vw - 32px)}
+.ftoast{background:#0C1A26;color:#EEF3F8;border-left:3px solid #066E5A;border-radius:6px;padding:10px 14px;font-size:13px;box-shadow:0 8px 24px rgba(12,26,38,0.28);animation:toastin .25s ease}
+@media(max-width:760px){
+  .fshell{grid-template-columns:1fr;grid-template-rows:52px 1fr;grid-template-areas:"head" "main"}
+  .fshell.hasNav{grid-template-rows:52px 1fr 56px;grid-template-areas:"head" "main" "bot"}
+  .fside{display:none}
+  .fbot{grid-area:bot;display:flex;overflow-x:auto;background:#0C1A26;border-top:1px solid #12222E}
+  .fbotItem{flex:0 0 auto;background:none;border:none;border-top:2px solid transparent;color:#9FB0BC;font-family:'Inter',sans-serif;font-size:11px;padding:8px 13px;cursor:pointer;white-space:nowrap}
+  .fbotItem.on{color:#fff;border-top-color:#066E5A}
+}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 `;
 
@@ -104,6 +126,22 @@ function Field({ label, value, onChange, placeholder, rows }) {
 const Centered = ({ children }) => <div style={{ minHeight: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>{children}</div>;
 const Scroll = ({ children }) => <div style={{ height: "100%", overflowY: "auto", padding: "26px 24px" }}>{children}</div>;
 
+// ---- toasts (shell chrome; any screen can push one via useToast) ----
+const ToastCtx = createContext(() => {});
+const useToast = () => useContext(ToastCtx);
+function ToastProvider({ children }) {
+  const [toasts, setToasts] = useState([]);
+  const push = useCallback((msg) => {
+    const id = Math.random().toString(36).slice(2);
+    setToasts(t => [...t, { id, msg }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3400);
+  }, []);
+  return <ToastCtx.Provider value={push}>
+    {children}
+    <div className="ftoasts" aria-live="polite">{toasts.map(t => <div key={t.id} className="ftoast" role="status">{t.msg}</div>)}</div>
+  </ToastCtx.Provider>;
+}
+
 // ============================================================
 // LANDING
 // ============================================================
@@ -133,13 +171,21 @@ function Landing({ go }) {
 // ============================================================
 // CANDIDATE SIDE
 // ============================================================
+// Candidate Carbon nav. Growth Dashboard and Upskill are real; the rest are
+// honest stubs to be built in Phase 1+.
+const CAND_NAV = [
+  ["dashboard", "Growth Dashboard"], ["applications", "Applications and Hub"], ["wallet", "Wallet and Escrow"],
+  ["community", "Community Ecosystem"], ["alchemist", "Experience Alchemist"], ["upskill", "Upskill and Training"],
+  ["settings", "Settings and Comm"],
+];
 function CandidateApp({ addBuilder, exit }) {
   const [screen, setScreen] = useState("signin");
   const [profile, setProfile] = useState({ name: "", role: "", city: "", experience: "" });
   const [result, setResult] = useState(null);
   const [points, setPoints] = useState(0);
   const [published, setPublished] = useState(false);
-  const nav = ["dashboard", "upskill"].includes(screen);
+  const toast = useToast();
+  const inApp = CAND_NAV.some(([k]) => k === screen);
 
   function finish(r) {
     setResult(r); setPoints(120);
@@ -148,9 +194,10 @@ function CandidateApp({ addBuilder, exit }) {
     const summary = `${profile.role || "Engineer"} with a ${r.tier.name} profile. Strongest in ${top.slice(0, 2).join(" and ")}. ${profile.experience.split(".")[0]}.`;
     addBuilder({ handle, role: profile.role || "Engineer", summary, skills: top, profileStrength: r.profileStrength, tier: r.tier, dimensions: r.dimensions, isYou: true });
     setPublished(true); setScreen("dashboard");
+    toast("You are in the network. Your profile is live to employers, identity shielded.");
   }
 
-  return <Shell role="candidate" exit={exit} nav={nav ? [["dashboard", "Dashboard"], ["upskill", "Upskilling"]] : null} active={screen} onNav={setScreen} showZuri={!NO_DOCK_SCREENS.includes(screen)}>
+  return <Shell role="candidate" exit={exit} nav={inApp ? CAND_NAV : null} active={screen} onNav={setScreen} showZuri={!NO_DOCK_SCREENS.includes(screen)}>
     {screen === "signin" && <SignIn onNext={() => setScreen("consent")} who="builder" />}
     {screen === "consent" && <Consent onNext={() => setScreen("onboarding")} onBack={() => setScreen("signin")} />}
     {screen === "onboarding" && <Onboarding profile={profile} setProfile={setProfile} onNext={() => setScreen("assessinfo")} onBack={() => setScreen("consent")} />}
@@ -159,6 +206,11 @@ function CandidateApp({ addBuilder, exit }) {
     {screen === "interview" && <Interview profile={profile} onBack={() => setScreen("assessinfo")} onComplete={finish} />}
     {screen === "dashboard" && result && <Dashboard profile={profile} result={result} onUpskill={() => setScreen("upskill")} published={published} />}
     {screen === "upskill" && result && <Upskill result={result} points={points} setPoints={setPoints} />}
+    {screen === "applications" && <Stub eyebrow="Candidate" title="Applications and Hub" line="Your matches, applied roles, interview invites, and status per application." />}
+    {screen === "wallet" && <Stub eyebrow="Candidate" title="Wallet and Escrow" line="Balance, escrow held, and payout history. Real payments are a backend step." />}
+    {screen === "community" && <Stub eyebrow="Candidate" title="Community Ecosystem" line="Fumana Squads, peer activity, and your impact portfolio." />}
+    {screen === "alchemist" && <Stub eyebrow="Candidate" title="Experience Alchemist" line="Turn your raw experience into recruiter-ready outcomes, with save and copy." />}
+    {screen === "settings" && <Stub eyebrow="Candidate" title="Settings and Comm" line="Language, notification channels, two-factor, and your data vault." />}
   </Shell>;
 }
 
@@ -522,8 +574,9 @@ function EmpDashboard({ company, onEngage }) {
   </div></Scroll>;
 }
 
-const EmpStub = ({ title, line }) => <Scroll><div style={{ maxWidth: 760, margin: "0 auto" }} className="rise">
-  <Eyebrow>Employer</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 8px" }}>{title}</h2>
+// Shared stub screen for nav items not yet built.
+const Stub = ({ eyebrow, title, line }) => <Scroll><div style={{ maxWidth: 760, margin: "0 auto" }} className="rise">
+  <Eyebrow>{eyebrow}</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 8px" }}>{title}</h2>
   <Card><p style={{ color: T.slate, fontSize: 14 }}>{line}</p><div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Coming next.</div></Card>
 </div></Scroll>;
 
@@ -532,8 +585,13 @@ function EmployerApp({ builders, pipeline, setPipeline, exit }) {
   const [tab, setTab] = useState("dashboard");
   const [company, setCompany] = useState({ name: "", domain: "", industry: "", size: "", country: "", hiringFor: "" });
   const [active, setActive] = useState(null); const [sow, setSow] = useState(null);
+  const toast = useToast();
   const inApp = screen === "app";
-  const shortlist = c => setPipeline(p => p.shortlisted.concat(p.interviewing, p.sow).some(x => x.handle === c.handle) ? p : ({ ...p, shortlisted: [...p.shortlisted, c] }));
+  const shortlist = c => {
+    if (pipeline.shortlisted.concat(pipeline.interviewing, pipeline.sow).some(x => x.handle === c.handle)) return;
+    setPipeline(p => ({ ...p, shortlisted: [...p.shortlisted, c] }));
+    toast(`${c.handle} added to your pipeline.`);
+  };
   const move = (c, from, to) => setPipeline(p => ({ ...p, [from]: p[from].filter(x => x.handle !== c.handle), [to]: [...p[to], c] }));
   const openSow = c => { setActive(c); setSow(null); setTab("compliance"); };
   return <Shell role="employer" exit={exit} nav={inApp ? EMP_NAV : null} active={tab} onNav={setTab} showZuri={inApp}>
@@ -546,10 +604,10 @@ function EmployerApp({ builders, pipeline, setPipeline, exit }) {
     {inApp && tab === "pipeline" && <Pipeline pipeline={pipeline} move={move} openSow={openSow} />}
     {inApp && tab === "compliance" && <Compliance active={active} sow={sow} setSow={setSow} />}
     {inApp && tab === "investments" && <Finance active={active} />}
-    {inApp && tab === "saved" && <EmpStub title="Saved Builders" line="Shortlist and revisit builders you want to keep an eye on." />}
-    {inApp && tab === "team" && <EmpStub title="My Team" line="Invite colleagues and manage seats and roles for your organization." />}
-    {inApp && tab === "trust" && <EmpStub title="Trust and Safety" line="Your fair-terms commitments, reporting, and dispute resolution." />}
-    {inApp && tab === "account" && <EmpStub title="Account" line="Company profile, billing, and verification status." />}
+    {inApp && tab === "saved" && <Stub eyebrow="Employer" title="Saved Builders" line="Shortlist and revisit builders you want to keep an eye on." />}
+    {inApp && tab === "team" && <Stub eyebrow="Employer" title="My Team" line="Invite colleagues and manage seats and roles for your organization." />}
+    {inApp && tab === "trust" && <Stub eyebrow="Employer" title="Trust and Safety" line="Your fair-terms commitments, reporting, and dispute resolution." />}
+    {inApp && tab === "account" && <Stub eyebrow="Employer" title="Account" line="Company profile, billing, and verification status." />}
   </Shell>;
 }
 
@@ -732,20 +790,26 @@ function ZuriDock({ role }) {
 // ============================================================
 // SHELL (shared header, role switch, nav)
 // ============================================================
+// Shared Carbon shell: dark header + dark left side nav (mobile bottom nav),
+// used by both portals. Pass nav=null for onboarding/interview (no nav chrome).
 function Shell({ role, exit, nav, active, onNav, children, showZuri }) {
-  return <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 24px", borderBottom: `1px solid ${T.line}`, flexWrap: "wrap", gap: 10 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-        <button onClick={exit} style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 20, letterSpacing: 3, background: "transparent", border: "none", cursor: "pointer", color: T.ink }}>FUMANA</button>
-        <span style={{ color: T.slate, fontSize: 12 }}>{role} portal</span>
+  const hasNav = !!nav;
+  return <div className={"fshell " + (hasNav ? "hasNav" : "noNav")}>
+    <header className="fhead">
+      <button onClick={exit} className="fbrand" aria-label="Fumana home">FUMANA</button>
+      <span style={{ color: "#8BA0AD", fontSize: 12 }}>{role} portal</span>
+      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
+        <button onClick={exit} style={{ fontFamily: F.mono, fontSize: 11, color: "#9FB0BC", background: "transparent", border: "1px solid #24343F", borderRadius: 6, padding: "5px 10px", cursor: "pointer" }}>switch role</button>
+        <span style={{ fontFamily: F.mono, fontSize: 11, color: "#3E8E7E" }}>Powered by Telos</span>
       </div>
-      {nav && <nav style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{nav.map(([k, lbl]) => <button key={k} onClick={() => onNav(k)} style={{ fontFamily: F.body, fontSize: 13.5, fontWeight: active === k ? 600 : 400, cursor: "pointer", background: active === k ? T.surface : "transparent", color: active === k ? T.ink : T.slate, border: `1px solid ${active === k ? T.emerald : T.line}`, borderRadius: 7, padding: "7px 13px" }}>{lbl}</button>)}</nav>}
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <button onClick={exit} style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, background: "transparent", border: `1px solid ${T.line}`, borderRadius: 6, padding: "5px 10px", cursor: "pointer" }}>switch role</button>
-        <span style={{ fontFamily: F.mono, fontSize: 11, color: T.emerald }}>Powered by Telos</span>
-      </div>
-    </div>
-    <div style={{ flex: 1, minHeight: 0 }}>{children}</div>
+    </header>
+    {hasNav && <nav className="fside" aria-label={`${role} navigation`}>
+      {nav.map(([k, lbl]) => <button key={k} className={"fnav" + (active === k ? " on" : "")} aria-current={active === k ? "page" : undefined} onClick={() => onNav(k)}>{lbl}</button>)}
+    </nav>}
+    <main className="fmain">{children}</main>
+    {hasNav && <nav className="fbot" aria-label={`${role} navigation`}>
+      {nav.map(([k, lbl]) => <button key={k} className={"fbotItem" + (active === k ? " on" : "")} aria-current={active === k ? "page" : undefined} onClick={() => onNav(k)}>{lbl}</button>)}
+    </nav>}
     {showZuri && <ZuriDock role={role} />}
   </div>;
 }
@@ -760,10 +824,10 @@ export default function App() {
   const addBuilder = b => setBuilders(prev => [b, ...prev]);
   return <div style={{ background: T.paper, minHeight: "100vh", color: T.ink, fontFamily: F.body }}>
     <style>{FONTS}</style>
-    <div style={{ maxWidth: 1100, margin: "0 auto", minHeight: "100vh" }}>
-      {view === "landing" && <Landing go={setView} />}
+    <ToastProvider>
+      {view === "landing" && <div style={{ minHeight: "100vh" }}><Landing go={setView} /></div>}
       {view === "candidate" && <CandidateApp addBuilder={addBuilder} exit={() => setView("landing")} />}
       {view === "employer" && <EmployerApp builders={builders} pipeline={pipeline} setPipeline={setPipeline} exit={() => setView("landing")} />}
-    </div>
+    </ToastProvider>
   </div>;
 }
