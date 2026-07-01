@@ -437,20 +437,119 @@ const Badge = ({ on, label }) => <span style={{ fontFamily: F.mono, fontSize: 12
 // ============================================================
 // EMPLOYER SIDE
 // ============================================================
+// ---- Employer onboarding (welcome -> auth -> company-info -> alignment -> app) ----
+// Same shell, palette, and components as the candidate portal. Auth reuses
+// <SignIn who="employer">. The Zuri dock is gated off until the app (showZuri).
+
+// Employer sidebar/nav. Dashboard is real; Engage Experts, Talent Pipeline, and
+// Investments reuse the existing working screens; the rest are honest stubs.
+const EMP_NAV = [
+  ["dashboard", "Dashboard"], ["engage", "Engage Experts"], ["pipeline", "Talent Pipeline"],
+  ["saved", "Saved Builders"], ["team", "My Team"], ["trust", "Trust and Safety"],
+  ["investments", "Investments"], ["account", "Account"],
+];
+const EMP_SIZES = ["1 to 50", "51 to 200", "201 to 1000", "1000 plus"];
+const EMP_PLEDGES = [
+  { key: "fairPay", title: "Fair pay", desc: "I will pay within a fair band for the role and region, not below local market for equivalent skill." },
+  { key: "hours", title: "Reasonable hours", desc: "I will agree a working-hours and timezone-overlap expectation, not round-the-clock availability." },
+  { key: "noMonitor", title: "No covert monitoring", desc: "I will not covertly monitor or surveil the builder. Any work tracking is agreed and visible to them." },
+];
+
+function EmpWelcome({ onNext }) {
+  return <Centered><div style={{ width: "100%", maxWidth: 620 }} className="rise">
+    <Eyebrow>For employers</Eyebrow>
+    <h1 style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 34, letterSpacing: 0.3, lineHeight: 1.12, margin: "8px 0 10px" }}>Hire verified African talent with the risk carried for you</h1>
+    <p style={{ color: T.slate, fontSize: 16, maxWidth: 520, marginBottom: 26 }}>Search by evidence, not keywords, with identity shielded until you commit.</p>
+    <Btn onClick={onNext}>Get started</Btn>
+  </div></Centered>;
+}
+
+function EmpCompanyInfo({ company, setCompany, onNext, onBack }) {
+  const set = (k, v) => setCompany(c => ({ ...c, [k]: v }));
+  const ready = company.name.trim() && company.domain.trim() && company.industry.trim();
+  const ctrl = { width: "100%", marginTop: 7, background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11, fontSize: 14, lineHeight: 1.5 };
+  return <Scroll><div style={{ maxWidth: 640, margin: "0 auto" }} className="rise">
+    <Back onClick={onBack} /><Eyebrow>Step 1 of 2 . Your organization</Eyebrow>
+    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "8px 0 4px" }}>Tell us about your company</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 18 }}>This creates your employer profile. We verify your organization from your work email domain.</p>
+    <Card>
+      <Field label="Company name" value={company.name} onChange={v => set("name", v)} placeholder="Acme GmbH" />
+      <div style={{ marginBottom: 14 }}>
+        <Label>Work email domain</Label>
+        <input value={company.domain} onChange={e => set("domain", e.target.value)} placeholder="acme.com" style={ctrl} />
+        <div style={{ fontSize: 12, color: T.slate, marginTop: 6 }}>Used to verify your organization.</div>
+      </div>
+      <div className="row2">
+        <Field label="Industry" value={company.industry} onChange={v => set("industry", v)} placeholder="Fintech" />
+        <div style={{ marginBottom: 14 }}><Label>Company size</Label>
+          <select value={company.size} onChange={e => set("size", e.target.value)} style={ctrl}>
+            <option value="">Select...</option>{EMP_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+      <Field label="Headquarters country" value={company.country} onChange={v => set("country", v)} placeholder="Germany" />
+      <Field label="What is the team hiring for?" rows={4} value={company.hiringFor} onChange={v => set("hiringFor", v)} placeholder="Optional. A short description of the roles or work." />
+    </Card>
+    <div style={{ marginTop: 16, marginBottom: 30 }}><Btn full disabled={!ready} onClick={onNext}>Continue</Btn><Hint show={!ready}>Company name, work email domain, and industry are required to continue.</Hint></div>
+  </div></Scroll>;
+}
+
+function EmpAlignment({ onEnter, onBack }) {
+  const [on, setOn] = useState({});
+  const all = EMP_PLEDGES.every(p => on[p.key]);
+  return <Scroll><div style={{ maxWidth: 680, margin: "0 auto" }} className="rise">
+    <Back onClick={onBack} /><Eyebrow>Step 2 of 2 . Fair terms</Eyebrow>
+    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "8px 0 6px" }}>The terms you sign to hire here</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 18 }}>Fumana matches you with shielded builders. In return, you commit to fair terms. These protect the builder and keep the network trusted.</p>
+    <div style={{ display: "grid", gap: 12 }}>
+      {EMP_PLEDGES.map(p => <button key={p.key} type="button" aria-pressed={!!on[p.key]} onClick={() => setOn(o => ({ ...o, [p.key]: !o[p.key] }))}
+        style={{ textAlign: "left", cursor: "pointer", background: T.surface, border: `1px solid ${on[p.key] ? T.emerald : T.line}`, borderLeftWidth: 4, borderLeftColor: on[p.key] ? T.emerald : T.line, borderRadius: 12, padding: "16px 18px", display: "flex", gap: 14, alignItems: "flex-start" }}>
+        <span aria-hidden="true" style={{ marginTop: 1, width: 20, height: 20, flexShrink: 0, borderRadius: 5, border: `1px solid ${on[p.key] ? T.emerald : T.line}`, background: on[p.key] ? T.emerald : "transparent", color: T.onAccent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>{on[p.key] ? "✓" : ""}</span>
+        <span><span style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 16 }}>{p.title}</span><div style={{ color: T.slate, fontSize: 13.5, marginTop: 3 }}>{p.desc}</div></span>
+      </button>)}
+    </div>
+    <div style={{ marginTop: 18, fontSize: 14 }}>I agree to these terms as a condition of using Fumana.</div>
+    <div style={{ marginTop: 14, marginBottom: 30 }}><Btn full disabled={!all} onClick={onEnter}>Enter Fumana</Btn><Hint show={!all}>Accept all three commitments to continue.</Hint></div>
+  </div></Scroll>;
+}
+
+function EmpDashboard({ company, onEngage }) {
+  return <Scroll><div style={{ maxWidth: 860, margin: "0 auto" }} className="rise">
+    <Eyebrow>Dashboard</Eyebrow>
+    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>{company.name || "Your company"}</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 18 }}>Welcome to Fumana. Your organization is set up. Engage verified, bias-shielded talent whenever you are ready.</p>
+    <Card><Label>Get started</Label><div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 18, margin: "8px 0 6px" }}>Engage experts</div><p style={{ fontSize: 13.5, color: T.slate, marginBottom: 14 }}>Describe the work and search the network by evidence, not keywords.</p><Btn onClick={onEngage}>Engage Experts</Btn></Card>
+  </div></Scroll>;
+}
+
+const EmpStub = ({ title, line }) => <Scroll><div style={{ maxWidth: 760, margin: "0 auto" }} className="rise">
+  <Eyebrow>Employer</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 8px" }}>{title}</h2>
+  <Card><p style={{ color: T.slate, fontSize: 14 }}>{line}</p><div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Coming next.</div></Card>
+</div></Scroll>;
+
 function EmployerApp({ builders, pipeline, setPipeline, exit }) {
-  const [screen, setScreen] = useState("signin");
-  const [tab, setTab] = useState("search");
+  const [screen, setScreen] = useState("welcome");
+  const [tab, setTab] = useState("dashboard");
+  const [company, setCompany] = useState({ name: "", domain: "", industry: "", size: "", country: "", hiringFor: "" });
   const [active, setActive] = useState(null); const [sow, setSow] = useState(null);
   const inApp = screen === "app";
   const shortlist = c => setPipeline(p => p.shortlisted.concat(p.interviewing, p.sow).some(x => x.handle === c.handle) ? p : ({ ...p, shortlisted: [...p.shortlisted, c] }));
   const move = (c, from, to) => setPipeline(p => ({ ...p, [from]: p[from].filter(x => x.handle !== c.handle), [to]: [...p[to], c] }));
   const openSow = c => { setActive(c); setSow(null); setTab("compliance"); };
-  return <Shell role="employer" exit={exit} nav={inApp ? [["search", "Search"], ["pipeline", "Pipeline"], ["compliance", "Compliance"], ["finance", "Finance"]] : null} active={tab} onNav={setTab} showZuri={!NO_DOCK_SCREENS.includes(screen)}>
-    {screen === "signin" && <SignIn onNext={() => setScreen("app")} who="employer" />}
-    {inApp && tab === "search" && <Search builders={builders} onShortlist={shortlist} chosen={[...pipeline.shortlisted, ...pipeline.interviewing, ...pipeline.sow]} />}
+  return <Shell role="employer" exit={exit} nav={inApp ? EMP_NAV : null} active={tab} onNav={setTab} showZuri={inApp}>
+    {screen === "welcome" && <EmpWelcome onNext={() => setScreen("auth")} />}
+    {screen === "auth" && <SignIn onNext={() => setScreen("company-info")} who="employer" />}
+    {screen === "company-info" && <EmpCompanyInfo company={company} setCompany={setCompany} onNext={() => setScreen("alignment")} onBack={() => setScreen("auth")} />}
+    {screen === "alignment" && <EmpAlignment onEnter={() => { setScreen("app"); setTab("dashboard"); }} onBack={() => setScreen("company-info")} />}
+    {inApp && tab === "dashboard" && <EmpDashboard company={company} onEngage={() => setTab("engage")} />}
+    {inApp && tab === "engage" && <Search builders={builders} onShortlist={shortlist} chosen={[...pipeline.shortlisted, ...pipeline.interviewing, ...pipeline.sow]} />}
     {inApp && tab === "pipeline" && <Pipeline pipeline={pipeline} move={move} openSow={openSow} />}
     {inApp && tab === "compliance" && <Compliance active={active} sow={sow} setSow={setSow} />}
-    {inApp && tab === "finance" && <Finance active={active} />}
+    {inApp && tab === "investments" && <Finance active={active} />}
+    {inApp && tab === "saved" && <EmpStub title="Saved Builders" line="Shortlist and revisit builders you want to keep an eye on." />}
+    {inApp && tab === "team" && <EmpStub title="My Team" line="Invite colleagues and manage seats and roles for your organization." />}
+    {inApp && tab === "trust" && <EmpStub title="Trust and Safety" line="Your fair-terms commitments, reporting, and dispute resolution." />}
+    {inApp && tab === "account" && <EmpStub title="Account" line="Company profile, billing, and verification status." />}
   </Shell>;
 }
 
