@@ -246,6 +246,82 @@ function Applications({ builders, pipeline }) {
   </div></Scroll>;
 }
 
+// ---- Wallet and Escrow (candidate). NO MODEL. All display and computed ----
+// Figures are computed in code from the builder's SOW-stage engagement in the
+// shared pipeline (illustrative). Real payments, escrow release, and payouts run
+// on the backend. Payout methods are placeholders.
+const PAYOUT_METHODS = [
+  { id: "mpesa", name: "M-Pesa", note: "Mobile money, East Africa" },
+  { id: "paystack", name: "Paystack", note: "Cards and bank transfer, Nigeria and beyond" },
+  { id: "flutterwave", name: "Flutterwave", note: "Pan-African payouts" },
+];
+const WALLET_PLATFORM_PCT = 12, WALLET_STATUTORY_PCT = 18; // illustrative, matches the finance hub
+
+function Wallet({ builders, pipeline }) {
+  const me = builders.find(b => b.isYou);
+  const toast = useToast();
+  const [method, setMethod] = useState("mpesa");
+  const methodName = PAYOUT_METHODS.find(m => m.id === method).name;
+  // Computed from the shared store: a SOW-stage engagement is the paying contract.
+  const contract = me ? pipeline.sow.find(x => x.handle === me.handle) : null;
+  const monthly = contract?.monthlyUsd || 0;
+  const net = Math.round(monthly * (1 - (WALLET_PLATFORM_PCT + WALLET_STATUTORY_PCT) / 100));
+  const escrow = monthly ? net : 0;
+  const available = monthly ? net : 0;
+  const history = monthly ? [{ label: "Previous cycle", amt: net }, { label: "Two cycles ago", amt: net }] : [];
+  const lifetime = available + escrow + history.reduce((a, h) => a + h.amt, 0);
+
+  if (!me) return <Scroll><div style={{ maxWidth: 860, margin: "0 auto" }} className="rise">
+    <Eyebrow>Wallet and Escrow</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 8px" }}>Your wallet</h2>
+    <Card><p style={{ color: T.slate, fontSize: 14 }}>You are not in the network yet. Complete your assessment to join and start earning through Fumana.</p></Card>
+  </div></Scroll>;
+
+  return <Scroll><div style={{ maxWidth: 860, margin: "0 auto" }} className="rise">
+    <Eyebrow>Wallet and Escrow</Eyebrow>
+    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Your earnings, held and paid safely</h2>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 14 }}>Fumana holds each cycle in escrow and releases it to your chosen payout method. Figures are computed from your engagement.</p>
+    <div style={{ marginBottom: 16, display: "inline-flex", alignItems: "center", gap: 8, fontFamily: F.mono, fontSize: 12, color: T.slate, border: `1px solid ${T.line}`, borderRadius: 6, padding: "6px 11px" }}>Illustrative. Real payments, escrow release, and payouts run on the backend.</div>
+
+    <div className="row2">
+      <Card><Label>Available balance</Label>
+        <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 34, color: T.emerald, margin: "8px 0 10px" }}>{usd(available)}</div>
+        <Btn small disabled={available <= 0} onClick={() => toast("Withdrawals run on the backend. This prototype is display only.")}>Withdraw to {methodName}</Btn>
+      </Card>
+      <Card accent={T.brass}><Label>In escrow</Label>
+        <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 34, color: T.brass, margin: "8px 0 10px" }}>{usd(escrow)}</div>
+        <div style={{ fontSize: 13, color: T.slate }}>Held for the current cycle, released on milestone completion.</div>
+      </Card>
+    </div>
+
+    <div style={{ marginTop: 12, fontFamily: F.mono, fontSize: 12, color: T.slate }}>Lifetime earned {usd(lifetime)}{monthly ? ` . from a ${usd(monthly)}/month engagement, ${usd(net)} net per cycle after a disclosed ${WALLET_PLATFORM_PCT}% platform fee and ${WALLET_STATUTORY_PCT}% illustrative statutory remittance` : " . no active contract yet"}</div>
+
+    <div style={{ marginTop: 18 }}>
+      <Label>Payout method</Label>
+      <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+        {PAYOUT_METHODS.map(m => <button key={m.id} type="button" onClick={() => setMethod(m.id)} aria-pressed={method === m.id}
+          style={{ textAlign: "left", cursor: "pointer", background: T.surface, border: `1px solid ${method === m.id ? T.emerald : T.line}`, borderLeftWidth: 4, borderLeftColor: method === m.id ? T.emerald : T.line, borderRadius: 12, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+          <span><span style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 15 }}>{m.name}</span><span style={{ display: "block", color: T.slate, fontSize: 12.5, marginTop: 2 }}>{m.note}</span></span>
+          <span aria-hidden="true" style={{ width: 18, height: 18, flexShrink: 0, borderRadius: "50%", border: `1px solid ${method === m.id ? T.emerald : T.line}`, background: method === m.id ? T.emerald : "transparent" }} />
+        </button>)}
+      </div>
+      <div style={{ marginTop: 8, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Placeholder. Connecting a real payout account is a backend step.</div>
+    </div>
+
+    <div style={{ marginTop: 18 }}>
+      <Label>Payout history</Label>
+      {history.length === 0
+        ? <div style={{ marginTop: 10 }}><Card><p style={{ color: T.slate, fontSize: 14 }}>No payouts yet. Once you accept an offer, released cycles show here.</p></Card></div>
+        : <div style={{ marginTop: 10, display: "grid", gap: 1, background: T.line, border: `1px solid ${T.line}`, borderRadius: 8, overflow: "hidden" }}>
+          {history.map((hst, i) => <div key={i} style={{ background: T.surface, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div><div style={{ fontSize: 14 }}>{hst.label}</div><div style={{ fontFamily: F.mono, fontSize: 11, color: T.emerald }}>Paid to {methodName}</div></div>
+            <div style={{ fontFamily: F.mono, fontSize: 15 }}>{usd(hst.amt)}</div>
+          </div>)}
+        </div>}
+    </div>
+    <div style={{ height: 30 }} />
+  </div></Scroll>;
+}
+
 // Candidate Carbon nav. Growth Dashboard and Upskill are real; the rest are
 // honest stubs to be built in Phase 1+.
 const CAND_NAV = [
@@ -282,7 +358,7 @@ function CandidateApp({ addBuilder, builders, pipeline, exit }) {
     {screen === "dashboard" && result && <Dashboard profile={profile} result={result} onUpskill={() => setScreen("upskill")} published={published} />}
     {screen === "upskill" && result && <Upskill result={result} points={points} setPoints={setPoints} />}
     {screen === "applications" && <Applications builders={builders} pipeline={pipeline} />}
-    {screen === "wallet" && <Stub eyebrow="Candidate" title="Wallet and Escrow" line="Balance, escrow held, and payout history. Real payments are a backend step." />}
+    {screen === "wallet" && <Wallet builders={builders} pipeline={pipeline} />}
     {screen === "community" && <Stub eyebrow="Candidate" title="Community Ecosystem" line="Fumana Squads, peer activity, and your impact portfolio." />}
     {screen === "alchemist" && <Stub eyebrow="Candidate" title="Experience Alchemist" line="Turn your raw experience into recruiter-ready outcomes, with save and copy." />}
     {screen === "settings" && <Stub eyebrow="Candidate" title="Settings and Comm" line="Language, notification channels, two-factor, and your data vault." />}
