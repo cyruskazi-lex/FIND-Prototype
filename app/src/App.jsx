@@ -160,6 +160,61 @@ function ToastProvider({ children }) {
   </ToastCtx.Provider>;
 }
 
+// ---- Human-in-the-loop (both portals) ----
+// Any AI decision surface calls useHumanReview()(what) to request a human review.
+// One shared modal collects the decision + why, logs to the audit trail, and
+// confirms with a reference and timeframe. It never removes the AI output.
+const HumanReviewCtx = createContext(() => {});
+const useHumanReview = () => useContext(HumanReviewCtx);
+
+function HumanReviewProvider({ logAudit, children }) {
+  const [open, setOpen] = useState(false);
+  const [decision, setDecision] = useState("");
+  const [reason, setReason] = useState("");
+  const [ref, setRef] = useState("");
+  const request = useCallback(what => { setDecision(what || ""); setReason(""); setRef(""); setOpen(true); }, []);
+  function submit() {
+    if (!reason.trim()) return;
+    const r = "HR-" + Math.random().toString(36).slice(2, 7).toUpperCase();
+    setRef(r);
+    if (logAudit) logAudit({ kind: "human-review", decision, reason: reason.trim(), ref: r });
+  }
+  return <HumanReviewCtx.Provider value={request}>
+    {children}
+    {open && <div role="dialog" aria-modal="true" aria-label="Request human review" onKeyDown={e => { if (e.key === "Escape") setOpen(false); }}
+      style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(12,26,38,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => setOpen(false)}>
+      <div onClick={e => e.stopPropagation()} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, width: 460, maxWidth: "100%", maxHeight: "85vh", overflowY: "auto", padding: 22, boxShadow: "0 20px 50px rgba(12,26,38,0.28)" }}>
+        {ref
+          ? <>
+            <Eyebrow>Human review</Eyebrow>
+            <h3 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 20, margin: "8px 0 6px" }}>Request received. A human will look at this.</h3>
+            <p style={{ fontSize: 14, color: T.slate, marginBottom: 14 }}>Your request is logged and queued for a human reviewer. The AI result stays as it is until a person reviews it.</p>
+            <div style={{ background: T.paper, border: `1px solid ${T.line}`, borderRadius: 8, padding: 12, fontFamily: F.mono, fontSize: 12.5, display: "grid", gap: 5 }}>
+              <div><span style={{ color: T.slate }}>reference </span><b>{ref}</b></div>
+              <div><span style={{ color: T.slate }}>expected </span>within 5 business days</div>
+            </div>
+            <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Stubbed queue in this prototype; real routing runs on the backend. Logged to your audit trail.</div>
+            <div style={{ marginTop: 16 }}><Btn onClick={() => setOpen(false)}>Done</Btn></div>
+          </>
+          : <>
+            <Eyebrow>Human review</Eyebrow>
+            <h3 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 20, margin: "8px 0 6px" }}>Ask a human to review this decision</h3>
+            <p style={{ fontSize: 13.5, color: T.slate, marginBottom: 12 }}>Your AI result stays as it is. This adds a human review alongside it.</p>
+            <Field label="What decision are you questioning?" value={decision} onChange={setDecision} />
+            <Field label="Why?" rows={4} value={reason} onChange={setReason} placeholder="In your own words." />
+            <div style={{ display: "flex", gap: 10, marginTop: 4 }}><Btn disabled={!reason.trim()} onClick={submit}>Submit request</Btn><Btn kind="ghost" onClick={() => setOpen(false)}>Cancel</Btn></div>
+          </>}
+      </div>
+    </div>}
+  </HumanReviewCtx.Provider>;
+}
+
+// Small "Request human review" trigger placed alongside an AI decision surface.
+function ReviewLink({ what }) {
+  const request = useHumanReview();
+  return <button onClick={() => request(what)} style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, background: "transparent", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", whiteSpace: "nowrap" }}>Request human review</button>;
+}
+
 
 // ============================================================
 // CANDIDATE SIDE
@@ -1100,7 +1155,7 @@ function Dashboard({ profile, result, onUpskill, published }) {
     {published && <div style={{ marginBottom: 16, background: "rgba(6,110,90,0.06)", border: `1px solid ${T.emerald}`, borderRadius: 10, padding: "11px 14px", fontSize: 13.5, color: T.vault }}>✓ You are now in the network, identity shielded. Switch to the employer side and search to find yourself.</div>}
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}>
       <div><Eyebrow>Growth dashboard</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 2px" }}>{profile.name || "Your"} profile</h2><div style={{ color: T.slate, fontSize: 14 }}>{profile.role} . {profile.city || "location hidden"}</div></div>
-      <div style={{ textAlign: "right" }}><div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 46, color: T.emerald, lineHeight: 1 }}>{result.profileStrength}</div><button onClick={() => setShowCalc(s => !s)} style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline" }}>profile strength . how is this calculated</button><div><span style={{ display: "inline-block", marginTop: 6, fontFamily: F.mono, fontSize: 12, color: T.onAccent, background: tier.color, borderRadius: 5, padding: "3px 10px" }}>{tier.name} tier</span></div></div>
+      <div style={{ textAlign: "right" }}><div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 46, color: T.emerald, lineHeight: 1 }}>{result.profileStrength}</div><button onClick={() => setShowCalc(s => !s)} style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline" }}>profile strength . how is this calculated</button><div><span style={{ display: "inline-block", marginTop: 6, fontFamily: F.mono, fontSize: 12, color: T.onAccent, background: tier.color, borderRadius: 5, padding: "3px 10px" }}>{tier.name} tier</span></div><div style={{ marginTop: 6 }}><ReviewLink what={`Profile Strength: ${result.profileStrength}`} /></div></div>
     </div>
     {showCalc && <div style={{ marginTop: 14 }}><Card pad={16} accent={T.brass}><Label>How this was calculated</Label><p style={{ fontSize: 13.5, color: T.slate, margin: "8px 0 10px" }}>Each dimension is scored 0 to 100 by an AI model from your experience and interview. Profile Strength is their weighted average.</p><div style={{ display: "grid", gap: 5 }}>{result.dimensions.map((d, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", fontFamily: F.mono, fontSize: 12, color: T.slate }}><span>{d.name}</span><span>{d.score} × {WEIGHTS[d.name]?.toFixed(2)}</span></div>)}<div style={{ display: "flex", justifyContent: "space-between", fontFamily: F.mono, fontSize: 12.5, color: T.emerald, borderTop: `1px solid ${T.mute}`, paddingTop: 6, marginTop: 2 }}><span>weighted average</span><span>{result.profileStrength}</span></div></div></Card></div>}
     <div className="dash" style={{ marginTop: 18 }}>
@@ -1112,7 +1167,10 @@ function Dashboard({ profile, result, onUpskill, published }) {
           <div style={{ marginTop: 7 }}><span style={{ fontFamily: F.mono, fontSize: 10.5, color: low ? T.alert : T.emerald, border: `1px solid ${low ? T.alert : T.emerald}`, borderRadius: 4, padding: "1px 7px" }}>{b.label} . {b.range}</span></div>
           <div style={{ fontSize: 12.5, color: T.slate, marginTop: 6 }}><b style={{ color: T.ink }}>Why this score:</b> {d.score} lands in the {b.label.toLowerCase()} band ({b.range}), {b.why}.</div>
           <div style={{ fontSize: 12.5, color: T.slate, marginTop: 4 }}><b style={{ color: T.ink }}>Rationale:</b> {d.rationale}</div>
-          <button onClick={() => setOpenDims(o => ({ ...o, [i]: !o[i] }))} aria-expanded={!!open} style={{ marginTop: 6, fontFamily: F.mono, fontSize: 11, color: T.emerald, background: "transparent", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>{open ? "hide evidence" : "show evidence"}</button>
+          <div style={{ display: "flex", gap: 16, marginTop: 6, flexWrap: "wrap" }}>
+            <button onClick={() => setOpenDims(o => ({ ...o, [i]: !o[i] }))} aria-expanded={!!open} style={{ fontFamily: F.mono, fontSize: 11, color: T.emerald, background: "transparent", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>{open ? "hide evidence" : "show evidence"}</button>
+            <ReviewLink what={`${d.name} score: ${d.score}/100`} />
+          </div>
           {open && <div style={{ marginTop: 8, background: T.paper, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11 }}>
             <div style={{ fontFamily: F.mono, fontSize: 10, color: T.slate, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 7 }}>Evidence . {EVIDENCE[d.name]}</div>
             {d.name === "Technical depth"
@@ -1362,8 +1420,8 @@ function SearchCard({ c, isRevealed, isShort, isIn, isSaved, budget, onShortlist
     {isRevealed
       ? <p style={{ fontSize: 14, color: T.ink, marginBottom: 12 }}>{c.summary}</p>
       : <div style={{ border: `1px dashed ${T.line}`, borderRadius: 8, padding: "10px 12px", marginBottom: 12, fontSize: 13, color: T.slate, background: T.paper }}>Role and summary are shielded. Request an interview to reveal them and commit to this builder.</div>}
-    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-      <Btn kind="ghost" small onClick={() => onToggleSave(c)}>{isSaved ? "Saved" : "Save"}</Btn>
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}><Btn kind="ghost" small onClick={() => onToggleSave(c)}>{isSaved ? "Saved" : "Save"}</Btn><ReviewLink what={`Search fit for ${c.handle}: ${c.fit}%`} /></div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {!isRevealed && <Btn kind="ghost" small disabled={isIn} onClick={() => onShortlist({ ...c, monthlyUsd: Number(budget) })}>{isShort ? "Shortlisted" : "Shortlist"}</Btn>}
         {isRevealed
@@ -1434,6 +1492,7 @@ function Pipeline({ pipeline, move, openSow }) {
               {ci < 2 && <Btn small onClick={() => move(c, key, COLS[ci + 1][0])}>{COLS[ci + 1][1]} →</Btn>}
               {key === "sow" && <Btn small onClick={() => openSow(c)}>Generate SOW</Btn>}
             </div>
+            <div style={{ marginTop: 8 }}><ReviewLink what={`Pipeline stage for ${c.handle}: ${title}`} /></div>
           </Card>)}
           {pipeline[key].length === 0 && <div style={{ color: T.slate, fontSize: 12.5, padding: "6px 2px" }}>Empty</div>}
         </div>
@@ -1748,6 +1807,8 @@ export default function App() {
   const [builders, setBuilders] = useState(SEED_BUILDERS);
   const [pipeline, setPipeline] = useState({ shortlisted: [], interviewing: [], sow: [] });
   const [squads, setSquads] = useState(SEED_SQUADS);
+  const [audit, setAudit] = useState([]);
+  const logAudit = e => setAudit(a => [{ ...e, at: Date.now() }, ...a]);
   const addBuilder = b => setBuilders(prev => [b, ...prev]);
   const joinSquad = id => setSquads(s => s.map(x => x.id === id ? { ...x, joined: true, members: x.members + 1 } : x));
   const leaveSquad = id => setSquads(s => s.map(x => x.id === id ? { ...x, joined: false, members: Math.max(0, x.members - 1) } : x));
@@ -1759,10 +1820,12 @@ export default function App() {
   return <div style={{ background: T.paper, minHeight: "100vh", color: T.ink, fontFamily: F.body }}>
     <style>{FONTS}</style>
     <ToastProvider>
-      {view === "landing" && <div style={marketingFont}><LandingPage onSignInClick={toRole} /></div>}
-      {view === "role" && <div style={marketingFont}><RoleSelectionPage onRoleSelect={r => setView(r === "builder" ? "candidate" : "employer")} onBack={() => setView("landing")} /></div>}
-      {view === "candidate" && <CandidateApp addBuilder={addBuilder} builders={builders} pipeline={pipeline} squads={squads} joinSquad={joinSquad} leaveSquad={leaveSquad} formSquad={formSquad} exit={() => setView("landing")} toRole={toRole} />}
-      {view === "employer" && <EmployerApp builders={builders} pipeline={pipeline} setPipeline={setPipeline} exit={() => setView("landing")} toRole={toRole} />}
+      <HumanReviewProvider logAudit={logAudit}>
+        {view === "landing" && <div style={marketingFont}><LandingPage onSignInClick={toRole} /></div>}
+        {view === "role" && <div style={marketingFont}><RoleSelectionPage onRoleSelect={r => setView(r === "builder" ? "candidate" : "employer")} onBack={() => setView("landing")} /></div>}
+        {view === "candidate" && <CandidateApp addBuilder={addBuilder} builders={builders} pipeline={pipeline} squads={squads} joinSquad={joinSquad} leaveSquad={leaveSquad} formSquad={formSquad} audit={audit} exit={() => setView("landing")} toRole={toRole} />}
+        {view === "employer" && <EmployerApp builders={builders} pipeline={pipeline} setPipeline={setPipeline} exit={() => setView("landing")} toRole={toRole} />}
+      </HumanReviewProvider>
     </ToastProvider>
   </div>;
 }
