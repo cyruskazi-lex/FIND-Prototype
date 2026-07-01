@@ -1382,6 +1382,9 @@ const Mini = ({ label, body }) => <div style={{ marginTop: 10, background: T.pap
 // marketplace economist is a NEEDS MODEL feature and arrives in Phase 2.)
 function Finance({ pipeline }) {
   const [statutoryPct, setStatutoryPct] = useState(18);
+  const [zBusy, setZBusy] = useState(false);
+  const [zErr, setZErr] = useState("");
+  const [zNote, setZNote] = useState("");
   const platformPct = 12; // Fumana platform fee, disclosed
   const team = pipeline.sow;
   if (team.length === 0) return <Scroll><div style={{ maxWidth: 760, margin: "0 auto" }} className="rise">
@@ -1400,6 +1403,22 @@ function Finance({ pipeline }) {
   const localRetained = Math.round(totalNet * 12 * 0.62); // illustrative annual local value retained
   const domestic = Math.round(totalMonthly * 2.4);        // illustrative domestic equivalent
   const saving = domestic - totalMonthly;
+
+  // Zuri marketplace economist (NEEDS MODEL): honest PPP-aware context on the
+  // active engagement's role and budget. Routes through /api/claude; inert-aware.
+  // Warm in manner, honest in substance, per the Zuri charter. She narrates
+  // context in ranges; the figures above stay computed in code.
+  const subject = team[0];
+  async function askEconomist() {
+    setZBusy(true); setZErr(""); setZNote("");
+    try {
+      const sys = "You are Zuri, the Fumana marketplace economist. You are warm in manner and honest in substance: kind about how you say things, honest about what is true. An employer is engaging an African builder at a monthly USD budget. In three or four plain sentences, tell them honestly whether this budget is competitive for this role in the African talent market, what that pay buys locally in purchasing-power terms, and one thing they should know. Use purchasing power parity context, speak in ranges not invented exact figures, and never present a number as a settled fact. No hype, no flattery, no em dashes, sentence case.";
+      setZNote(await callClaude({ system: sys, messages: [{ role: "user", content: `Role: ${subject.role}. Monthly budget: ${usd(subject.monthlyUsd || 0)} USD.` }], expectJson: false }));
+    } catch (e) {
+      setZErr(String(e).includes("501") ? "config" : "fail");
+    }
+    setZBusy(false);
+  }
 
   return <Scroll><div style={{ maxWidth: 900, margin: "0 auto" }} className="rise">
     <Eyebrow>Investments</Eyebrow>
@@ -1442,6 +1461,20 @@ function Finance({ pipeline }) {
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>{["SDG 8", "SDG 9", "SDG 17"].map(s => <span key={s} style={{ fontFamily: F.mono, fontSize: 11, color: T.emerald, border: `1px solid ${T.line}`, borderRadius: 4, padding: "2px 7px" }}>{s}</span>)}</div>
       </Card>
     </div>
+
+    <div style={{ marginTop: 16 }}><Card accent={zNote ? T.emerald : T.line}>
+      <Label>Zuri . marketplace economist</Label>
+      <div style={{ fontSize: 13, color: T.slate, marginTop: 6 }}>Honest, PPP-aware context on {subject.handle}'s {usd(subject.monthlyUsd || 0)} / month for a {subject.role} role.{team.length > 1 ? ` ${team.length - 1} more engagement${team.length - 1 === 1 ? "" : "s"} not shown.` : ""}</div>
+      {zBusy
+        ? <div style={{ marginTop: 12 }}><Spinner label="Zuri is checking the market..." /></div>
+        : zErr === "config"
+          ? <p style={{ marginTop: 10, fontSize: 13.5, color: T.slate }}>Zuri's economist is ready and wired through the model proxy. It lights up the moment a model provider is connected.</p>
+          : zErr === "fail"
+            ? <div style={{ marginTop: 10, color: T.alert, fontSize: 14, display: "flex", gap: 12, alignItems: "center" }}>Zuri did not respond. <Btn kind="ghost" small onClick={askEconomist}>Try again</Btn></div>
+            : zNote
+              ? <><p style={{ marginTop: 12, fontSize: 14, lineHeight: 1.6 }}>{zNote}</p><div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Zuri narrates market context. The figures above are computed in code.</div></>
+              : <div style={{ marginTop: 12 }}><Btn kind="ghost" small onClick={askEconomist}>Is this budget competitive?</Btn></div>}
+    </Card></div>
     <div style={{ height: 30 }} />
   </div></Scroll>;
 }
