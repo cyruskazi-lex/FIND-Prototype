@@ -148,6 +148,9 @@ export function AuthFormPage({ role, onBack, onAuthenticated }: { role: string; 
           </div>
         </div>
       </div>
+      <footer className="p-4 text-center font-['IBM_Plex_Mono',monospace] text-[11px] text-[#5E6E7A]">
+        &copy; FIND Services Limited. Powered by Telos. Designed by Lexington Advisory Group.
+      </footer>
     </div>
   );
 }
@@ -224,7 +227,7 @@ export function RoleSelectionPage({ onRoleSelect, onBack }: { onRoleSelect: (rol
             Tip: build a profile first, then enter as an employer and search. You will find yourself in the results.
           </p>
           <p className="font-['IBM_Plex_Mono',monospace] text-[13px] text-[#5E6E7A]">
-            Powered by Telos. Designed by Lexington Advisory Group.
+            &copy; FIND Services Limited. Powered by Telos. Designed by Lexington Advisory Group.
           </p>
         </div>
 
@@ -274,12 +277,12 @@ export function LandingPage({ onSignInClick }: { onSignInClick: () => void }) {
           </div>
 
           <h1 className="text-5xl lg:text-7xl font-semibold text-[#0C1A26] leading-[1.05] tracking-tight">
-            African Talent.<br />
-            Global Scale.
+            African talent.<br />
+            Global scale.
           </h1>
 
           <p className="text-lg text-[#5E6E7A] max-w-xl leading-relaxed">
-            Systematically connecting highly skilled African professionals to global remote opportunities through AI-powered assessment, verified upskilling, and bidirectional matching.
+            Systematically connecting verified African engineers to global enterprise requirements through Telos assessment, verified upskilling, and bidirectional matching.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 pt-4">
@@ -390,8 +393,8 @@ export function LandingPage({ onSignInClick }: { onSignInClick: () => void }) {
                 [ Module: Arbitrage_Calc ]
               </div>
               <h2 className="text-4xl lg:text-5xl font-semibold tracking-tight text-[#EEF3F8] leading-tight">
-                Global Quality. <br />
-                <span className="text-[#C2CCD4] font-light">Asymmetric Cost.</span>
+                Global quality. <br />
+                <span className="text-[#C2CCD4] font-light">Asymmetric cost.</span>
               </h2>
               <p className="text-[#C2CCD4] text-lg leading-relaxed max-w-md pt-2">
                 By bridging the purchasing power parity (PPP) gap, global employers unlock dramatic savings while offering African professionals 4x their local market salary.
@@ -400,7 +403,7 @@ export function LandingPage({ onSignInClick }: { onSignInClick: () => void }) {
               <div className="pt-6 space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="w-6 h-6 bg-[#EEF3F8] flex items-center justify-center text-[#0C1A26]"><Check size={14} strokeWidth={3} /></div>
-                  <span className="text-[#EEF3F8] font-medium text-sm">Same skill level verified via AI</span>
+                  <span className="text-[#EEF3F8] font-medium text-sm">Same skill level, verified by Telos</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="w-6 h-6 bg-[#EEF3F8] flex items-center justify-center text-[#0C1A26]"><Check size={14} strokeWidth={3} /></div>
@@ -470,7 +473,7 @@ export function LandingPage({ onSignInClick }: { onSignInClick: () => void }) {
       <section className="py-24 bg-[#F2F4F7] border-y border-[#D7DEE3]" id="assessment">
         <div className="max-w-7xl mx-auto px-6">
           <div className="mb-16 max-w-2xl space-y-4">
-            <h2 className="text-3xl font-semibold text-[#0C1A26]">Infrastructure Framework</h2>
+            <h2 className="text-3xl font-semibold text-[#0C1A26]">Intelligence architecture</h2>
             <p className="text-lg text-[#5E6E7A]">
               Moving beyond basic keywords. Our system evaluates, upskills, and matches professionals utilizing four distinct structural pillars.
             </p>
@@ -481,9 +484,9 @@ export function LandingPage({ onSignInClick }: { onSignInClick: () => void }) {
               <div className="w-10 h-10 bg-[#E3E8EB] flex items-center justify-center mb-6 text-[#0C1A26]">
                 <BrainCircuit size={20} />
               </div>
-              <h3 className="text-xl font-semibold text-[#0C1A26] mb-3">AI Psychosocial Assessment</h3>
+              <h3 className="text-xl font-semibold text-[#0C1A26] mb-3">Telos assessment</h3>
               <p className="text-[#5E6E7A] text-sm leading-relaxed mb-8">
-                Standard Western tools fail to capture talent nuance. We evaluate cross-cultural competency, resilience, and remote infrastructure.
+                Standard tools fail to capture talent nuance. Telos performs zero-hallucination audits of technical history, cross-cultural competency, and remote infrastructure resilience.
               </p>
 
               <div className="bg-[#F2F4F7] p-4 border border-[#D7DEE3] space-y-3 font-['IBM_Plex_Mono',monospace]">
@@ -502,7 +505,7 @@ export function LandingPage({ onSignInClick }: { onSignInClick: () => void }) {
               <div className="w-10 h-10 bg-[#E3E8EB] flex items-center justify-center mb-6 text-[#0C1A26]">
                 <BookOpen size={20} />
               </div>
-              <h3 className="text-xl font-semibold text-[#0C1A26] mb-3">Integrated Upskilling Ecosystem</h3>
+              <h3 className="text-xl font-semibold text-[#0C1A26] mb-3">Integrated upskilling ecosystem</h3>
               <p className="text-[#5E6E7A] text-sm leading-relaxed mb-8">
                 Identify skills gaps via LMS learning paths. Candidates earn points and increase visibility profiles, tracked via metadata tiers.
               </p>
@@ -527,7 +530,7 @@ export function LandingPage({ onSignInClick }: { onSignInClick: () => void }) {
               <div className="w-10 h-10 bg-[#E3E8EB] flex items-center justify-center mb-6 text-[#0C1A26]">
                 <LineChart size={20} />
               </div>
-              <h3 className="text-xl font-semibold text-[#0C1A26] mb-3">Bidirectional Accountability</h3>
+              <h3 className="text-xl font-semibold text-[#0C1A26] mb-3">Bidirectional accountability</h3>
               <p className="text-[#5E6E7A] text-sm leading-relaxed mb-8">
                 We don't just score candidates; we rate employers. Enterprise partners are assessed on their "Africa Hiring Readiness" metrics.
               </p>
@@ -551,7 +554,7 @@ export function LandingPage({ onSignInClick }: { onSignInClick: () => void }) {
               <div className="w-10 h-10 bg-[#E3E8EB] flex items-center justify-center mb-6 text-[#0C1A26]">
                 <Shield size={20} />
               </div>
-              <h3 className="text-xl font-semibold text-[#0C1A26] mb-3">Micro-Internships</h3>
+              <h3 className="text-xl font-semibold text-[#0C1A26] mb-3">Micro-internships</h3>
               <p className="text-[#5E6E7A] text-sm leading-relaxed mb-6">
                 Test talent before committing. Post 1-4 week project-based tasks. The Try Africa Talent module reduces enterprise risk.
               </p>
@@ -586,13 +589,13 @@ export function LandingPage({ onSignInClick }: { onSignInClick: () => void }) {
               <h4 className="font-semibold text-[#0C1A26] mb-4 text-sm">Enterprise</h4>
               <ul className="list-none space-y-3 text-sm font-['IBM_Plex_Sans',sans-serif]">
                 <li><a href="#" className="text-[#5E6E7A] hover:text-[#0C1A26] transition-colors">Post Requisition</a></li>
-                <li><a href="#" className="text-[#5E6E7A] hover:text-[#0C1A26] transition-colors">Micro-Internships</a></li>
+                <li><a href="#" className="text-[#5E6E7A] hover:text-[#0C1A26] transition-colors">Micro-internships</a></li>
                 <li><a href="#" className="text-[#5E6E7A] hover:text-[#0C1A26] transition-colors">Global Solutions</a></li>
               </ul>
             </div>
 
             <div>
-              <h4 className="font-semibold text-[#0C1A26] mb-4 text-sm">Builder Node</h4>
+              <h4 className="font-semibold text-[#0C1A26] mb-4 text-sm">Builder node</h4>
               <ul className="list-none space-y-3 text-sm font-['IBM_Plex_Sans',sans-serif]">
                 <li><a href="#" className="text-[#5E6E7A] hover:text-[#0C1A26] transition-colors">Zuri Assessment</a></li>
                 <li><a href="#" className="text-[#5E6E7A] hover:text-[#0C1A26] transition-colors">LMS Access</a></li>
@@ -601,18 +604,9 @@ export function LandingPage({ onSignInClick }: { onSignInClick: () => void }) {
             </div>
           </div>
 
-          <div className="border-t border-[#D7DEE3] pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="font-['IBM_Plex_Mono',monospace] text-xs text-[#5E6E7A] uppercase">
-              &copy; {new Date().getFullYear()} FIND Services Limited
-            </div>
-            <div className="flex gap-4 items-center">
-              <span className="font-['IBM_Plex_Mono',monospace] text-xs text-[#5E6E7A] uppercase">
-                Powered by Telos
-              </span>
-              <span className="w-px h-3 bg-[#D7DEE3] block"></span>
-              <span className="font-['IBM_Plex_Mono',monospace] text-xs text-[#5E6E7A] uppercase">
-                Lex Advisory Group
-              </span>
+          <div className="border-t border-[#D7DEE3] pt-8 text-center">
+            <div className="font-['IBM_Plex_Mono',monospace] text-xs text-[#5E6E7A]">
+              &copy; FIND Services Limited. Powered by Telos. Designed by Lexington Advisory Group.
             </div>
           </div>
         </div>

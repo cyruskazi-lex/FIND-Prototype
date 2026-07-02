@@ -42,8 +42,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
 @keyframes toastin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 @keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
 /* Carbon shell: dark header + dark left side nav, one shared component */
-.fshell{height:100dvh;display:grid;grid-template-columns:248px 1fr;grid-template-rows:52px 1fr;grid-template-areas:"head head" "side main"}
-.fshell.noNav{grid-template-columns:1fr;grid-template-areas:"head" "main"}
+.fshell{height:100dvh;display:grid;grid-template-columns:248px 1fr;grid-template-rows:52px 1fr auto;grid-template-areas:"head head" "side main" "foot foot"}
+.fshell.noNav{grid-template-columns:1fr;grid-template-areas:"head" "main" "foot"}
 .fhead{grid-area:head;display:flex;align-items:center;gap:12px;background:#0C1A26;color:#EEF3F8;padding:0 16px}
 .fbrand{font-family:'Hanken Grotesk',sans-serif;font-weight:800;font-size:18px;letter-spacing:3px;background:none;border:none;color:#fff;cursor:pointer;padding:0}
 .fside{grid-area:side;background:#0C1A26;border-right:1px solid #12222E;display:flex;flex-direction:column;padding:10px 0;overflow-y:auto}
@@ -51,14 +51,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
 .fnav:hover{background:#12222E;color:#fff}
 .fnav.on{background:#12222E;border-left-color:#066E5A;color:#fff;font-weight:600}
 .fmain{grid-area:main;min-height:0;overflow-y:auto;background:#F2F4F7}
+.ffoot{grid-area:foot;background:#0C1A26;color:#8BA0AD;font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:7px 16px;text-align:center;border-top:1px solid #12222E}
 .fbot{display:none}
 .ftoasts{position:fixed;top:64px;right:16px;z-index:70;display:flex;flex-direction:column;gap:8px;max-width:calc(100vw - 32px)}
 .ftoast{background:#0C1A26;color:#EEF3F8;border-left:3px solid #066E5A;border-radius:6px;padding:10px 14px;font-size:13px;box-shadow:0 8px 24px rgba(12,26,38,0.28);animation:toastin .25s ease}
 .fdock{bottom:20px}
 @media(max-width:880px){.fdock{bottom:76px}}
 @media(max-width:880px){
-  .fshell{grid-template-columns:1fr;grid-template-rows:52px 1fr;grid-template-areas:"head" "main"}
-  .fshell.hasNav{grid-template-rows:52px 1fr 56px;grid-template-areas:"head" "main" "bot"}
+  .fshell{grid-template-columns:1fr;grid-template-rows:52px 1fr auto;grid-template-areas:"head" "main" "foot"}
+  .fshell.hasNav{grid-template-rows:52px 1fr 56px auto;grid-template-areas:"head" "main" "bot" "foot"}
   .fside{display:none}
   .fbot{grid-area:bot;display:flex;overflow-x:auto;background:#0C1A26;border-top:1px solid #12222E}
   .fbotItem{flex:0 0 auto;background:none;border:none;border-top:2px solid transparent;color:#9FB0BC;font-family:'Inter',sans-serif;font-size:11px;padding:8px 13px;cursor:pointer;white-space:nowrap}
@@ -508,7 +509,8 @@ function Community({ builders, pipeline, squads, onJoin, onLeave, onForm }) {
     <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Grow with the network</h2>
     <p style={{ color: T.slate, fontSize: 15, marginBottom: 18 }}>Join squads, see what peers are building, and track the impact you create.</p>
 
-    <Label>Your impact portfolio</Label>
+    <Label>Global Impact Commons</Label>
+    <p style={{ fontSize: 13.5, color: T.slate, margin: "6px 0 0" }}>Auditable impact data, open and verified, powered by Lexington Advisory.</p>
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginTop: 10 }}>
       <Stat n={gcp} label="Good Citizen Points" /><Stat n={engagements} label="engagements" /><Stat n={usd(localImpact)} label="local impact / yr, illustrative" /><Stat n={joinedCount} label="squads joined" />
     </div>
@@ -671,9 +673,9 @@ function EthicsPage({ onBack }) {
     <Section n="1" title="How Zuri assesses you">
       <ul style={ul}>
         <Li>Zuri, an AI interviewer, asks a few questions that adapt to your answers.</Li>
-        <Li>An AI model reads your experience and your answers, then scores six dimensions from 0 to 100, each with a written reason you can see.</Li>
+        <Li>Telos reads your experience and your answers, then scores six dimensions from 0 to 100, each with a written reason you can see.</Li>
         <Li>Your Profile Strength is a weighted average of those scores, computed by a fixed formula.</Li>
-        <Li>Telos, the engine underneath, uses a graph-based reasoning model to relate your evidence across the dimensions.</Li>
+        <Li>Telos uses a graph-based reasoning model to trace how your answers connect to enterprise readiness.</Li>
         <Li>A score is a starting point, not a verdict. You can retake the interview, contest a score, or ask for a human.</Li>
       </ul>
     </Section>
@@ -891,7 +893,7 @@ function Settings({ builders, onFairness, onAudit, onReport, onEthics, logAudit 
 const CAND_NAV = [
   ["dashboard", "Growth Dashboard"], ["applications", "Applications and Hub"], ["wallet", "Wallet and Escrow"],
   ["coach", "Negotiation Coach"], ["worth", "Global Worth Simulator"], ["community", "Community Ecosystem"],
-  ["alchemist", "Experience Alchemist"], ["upskill", "Upskill and Training"], ["settings", "Settings and Comm"],
+  ["alchemist", "Experience Alchemist"], ["upskill", "Path to 1%"], ["settings", "Settings and Comm"],
 ];
 // ---- Experience Alchemist (candidate). NEEDS MODEL ----
 // A first-class screen: reshapes the builder's raw, plainly-written experience
@@ -909,7 +911,7 @@ function ExperienceAlchemist({ profile, onBuildCV }) {
   async function run() {
     setBusy(true); setErr(""); setResult(null); setSaved(false);
     try {
-      const sys = "You are Zuri's Experience Alchemist for Fumana. Turn a builder's raw, plainly-written experience into recruiter-ready outcomes without inventing anything. Return a concise role title, a one-line headline, three to five outcome bullets phrased as concrete achievements grounded only in what they wrote, six to ten skills evident from the text, and a one-sentence integrity note confirming nothing was added beyond what they described. Warm and honest, no hype, no em dashes. Return ONLY JSON, no fences. Shape: {\"role\":string,\"headline\":string,\"outcomes\":[string],\"skills\":[string],\"integrityNote\":string}.";
+      const sys = "You are Telos, the Experience Alchemist for Fumana. Turn a builder's raw, plainly-written experience into recruiter-ready outcomes without inventing anything. Return a concise role title, a one-line headline, three to five outcome bullets phrased as concrete achievements grounded only in what they wrote, six to ten skills evident from the text, and a one-sentence integrity note confirming nothing was added beyond what they described. Precise and honest, no hype, no em dashes. Return ONLY JSON, no fences. Shape: {\"role\":string,\"headline\":string,\"outcomes\":[string],\"skills\":[string],\"integrityNote\":string}.";
       setResult(await callClaude({ system: sys, messages: [{ role: "user", content: raw }], expectJson: true }));
     } catch (e) {
       setErr(String(e).includes("501") ? "config" : "fail");
@@ -927,11 +929,11 @@ function ExperienceAlchemist({ profile, onBuildCV }) {
   return <Scroll><div style={{ maxWidth: 760, margin: "0 auto" }} className="rise">
     <Eyebrow>Experience Alchemist</Eyebrow>
     <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Turn your experience into recruiter-ready outcomes</h2>
-    <p style={{ color: T.slate, fontSize: 15, marginBottom: 12 }}>Write plainly. Zuri reshapes it into a role, headline, outcomes, and skills, grounded only in what you wrote. Nothing invented.</p>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 12 }}>Write plainly. Telos reshapes it into a role, headline, outcomes, and skills, grounded only in what you wrote. Nothing invented.</p>
     <div style={{ marginBottom: 18 }}><button onClick={onBuildCV} style={{ background: "none", border: "none", color: T.emerald, cursor: "pointer", padding: 0, fontSize: 13.5, textDecoration: "underline", fontFamily: F.body }}>I don't have a CV yet, build one with Zuri</button></div>
     <Card>
       <Field label="Your experience, in your words" rows={7} value={raw} onChange={setRaw} placeholder="What have you built, what did you handle, what went wrong and how did you fix it." />
-      <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 4 }}>{busy ? <Spinner label="Zuri is reshaping your experience..." /> : <Btn disabled={!ready} onClick={run}>Run the Alchemist</Btn>}<Hint show={!ready && !busy}>Add a few sentences of experience to continue.</Hint></div>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 4 }}>{busy ? <Spinner label="Telos is reshaping your experience..." /> : <Btn disabled={!ready} onClick={run}>Run the Alchemist</Btn>}<Hint show={!ready && !busy}>Add a few sentences of experience to continue.</Hint></div>
     </Card>
 
     {err === "config" && <div style={{ marginTop: 16 }}><Card accent={T.brass}><Label>Alchemist is ready, waiting on a provider</Label><p style={{ fontSize: 14, color: T.slate, marginTop: 8 }}>The Experience Alchemist is built and wired through the model proxy. It lights up the moment a model provider is connected.</p></Card></div>}
@@ -953,7 +955,7 @@ function ExperienceAlchemist({ profile, onBuildCV }) {
         <Btn kind="ghost" small onClick={copy}>Copy</Btn>
       </div>
       <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Saved locally in this prototype. Real persistence is a backend step.</div>
-      <ZuriNote />
+      <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 10.5, color: T.slate }}>Reshaped by Telos from what you wrote. Nothing was added.</div>
     </Card></div>}
     <div style={{ height: 30 }} />
   </div></Scroll>;
@@ -1084,10 +1086,10 @@ function CVBuilder({ profile, saveCV, onBack }) {
 
     {phase === "building" && <div style={{ display: "flex", justifyContent: "center" }}>
       {err === "config"
-        ? <Card accent={T.brass}><Label>Zuri is ready, waiting on a provider</Label><p style={{ fontSize: 14, color: T.slate, marginTop: 8 }}>The CV writer is wired through the model proxy. It lights up the moment a model provider is connected.</p></Card>
+        ? <Card accent={T.brass}><Label>The Telos Ingestion Agent is ready, waiting on a provider</Label><p style={{ fontSize: 14, color: T.slate, marginTop: 8 }}>The Telos Ingestion Agent is wired through the model proxy. It lights up the moment a model provider is connected.</p></Card>
         : err === "fail"
           ? <div style={{ color: T.alert, fontSize: 14, display: "flex", gap: 12, alignItems: "center" }}>Zuri could not write the CV. <Btn kind="ghost" small onClick={() => build(qa)}>Try again</Btn></div>
-          : <Card><Spinner label="Zuri is writing your CV from your answers..." /></Card>}
+          : <Card><Spinner label="The Telos Ingestion Agent is writing your CV from your answers..." /></Card>}
     </div>}
 
     {phase === "review" && cv && <div>
@@ -1133,7 +1135,6 @@ function CVBuilder({ profile, saveCV, onBack }) {
         <Btn kind="ghost" small onClick={() => { setPhase("ready"); setCv(null); setQa([]); setSaved(false); }}>Start over</Btn>
       </div>
       <div className="noprint" style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Copy uses your clipboard. PDF uses your browser's print to PDF; a real PDF service is a backend step. Saved locally in this prototype; real persistence is a backend step.</div>
-      <div className="noprint"><ZuriNote /></div>
     </div>}
     <div style={{ height: 30 }} />
   </div></Scroll>;
@@ -1332,7 +1333,7 @@ function Consent({ onNext, onBack }) {
     <Card pad={20}><ul style={{ listStyle: "none", display: "grid", gap: 12, fontSize: 14 }}>
       <Li><b>Bias shield.</b> Your name, photo, location, and gender stay hidden from employers until you accept an interview.</Li>
       <Li><b>You own your data.</b> Export or delete your profile at any time.</Li>
-      <Li><b>Honest assessment.</b> Zuri scores your strengths and names your gaps plainly, then helps you close them.</Li>
+      <Li><b>Honest assessment.</b> Telos scores your strengths and names your gaps plainly, then helps you close them.</Li>
     </ul>
       <label style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 18, fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={ok} onChange={e => setOk(e.target.checked)} style={{ marginTop: 3 }} /><span>I understand the bias-shielded process and data terms.</span></label>
     </Card>
@@ -1456,9 +1457,9 @@ function AssessInfo({ onOptIn, onOptOut, onBack, accommodations, setAccommodatio
     <div style={{ height: 14 }} />
     <Card><Label>The method</Label><ul style={{ listStyle: "none", display: "grid", gap: 9, marginTop: 12, fontSize: 14 }}>
       <Li>Zuri, an AI interviewer, asks questions that adapt to your answers.</Li>
-      <Li>An AI model reads your experience and answers, then scores each dimension 0 to 100 with a written reason you will see.</Li>
+      <Li>Telos reads your experience and answers, then scores each dimension 0 to 100 with a written reason you will see.</Li>
       <Li>Your Profile Strength is a weighted average computed by the fixed formula above.</Li>
-      <Li>Telos, the engine underneath, uses a graph-based reasoning model to relate your evidence across the dimensions.</Li>
+      <Li>Telos uses a graph-based reasoning model to trace how your answers connect to enterprise readiness.</Li>
       <Li>Scores are a starting point, not a verdict. You can retake the interview.</Li>
     </ul></Card>
     <div style={{ height: 14 }} />
@@ -1662,7 +1663,7 @@ function Interview({ profile, accommodations, onBack, onComplete }) {
 
     {phase === "scoring" && <div style={{ display: "flex", justifyContent: "center" }}>{err
       ? <div style={{ color: T.alert, fontSize: 14, display: "flex", gap: 12, alignItems: "center" }}>Scoring did not complete. <Btn kind="ghost" small onClick={() => score(qa)}>Try again</Btn></div>
-      : <Card><Spinner label="Zuri is scoring your six dimensions..." /></Card>}</div>}
+      : <Card><Spinner label="Telos is assessing your six dimensions from your interview..." /></Card>}</div>}
 
     <div style={{ height: 30 }} />
   </div></Scroll>;
@@ -1692,7 +1693,7 @@ function Dashboard({ profile, result, onUpskill, published, audit, logAudit }) {
       <div><Eyebrow>Growth dashboard</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 2px" }}>{profile.name || "Your"} profile</h2><div style={{ color: T.slate, fontSize: 14 }}>{profile.role} . {profile.city || "location hidden"}</div></div>
       <div style={{ textAlign: "right" }}><div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 46, color: T.emerald, lineHeight: 1 }}>{result.profileStrength}</div><button onClick={() => setShowCalc(s => !s)} style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline" }}>profile strength . how is this calculated</button><div><span style={{ display: "inline-block", marginTop: 6, fontFamily: F.mono, fontSize: 12, color: T.onAccent, background: tier.color, borderRadius: 5, padding: "3px 10px" }}>{tier.name} tier</span></div><div style={{ marginTop: 6, display: "flex", gap: 14, justifyContent: "flex-end", flexWrap: "wrap" }}><ReviewLink what={`Profile Strength: ${result.profileStrength}`} /><button onClick={openContest} style={{ fontFamily: F.mono, fontSize: 11, color: T.brass, background: "transparent", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", whiteSpace: "nowrap" }}>Contest this score</button></div></div>
     </div>
-    {showCalc && <div style={{ marginTop: 14 }}><Card pad={16} accent={T.brass}><Label>How this was calculated</Label><p style={{ fontSize: 13.5, color: T.slate, margin: "8px 0 10px" }}>Each dimension is scored 0 to 100 by an AI model from your experience and interview. Profile Strength is their weighted average.</p><div style={{ display: "grid", gap: 5 }}>{result.dimensions.map((d, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", fontFamily: F.mono, fontSize: 12, color: T.slate }}><span>{d.name}</span><span>{d.score} × {WEIGHTS[d.name]?.toFixed(2)}</span></div>)}<div style={{ display: "flex", justifyContent: "space-between", fontFamily: F.mono, fontSize: 12.5, color: T.emerald, borderTop: `1px solid ${T.mute}`, paddingTop: 6, marginTop: 2 }}><span>weighted average</span><span>{result.profileStrength}</span></div></div></Card></div>}
+    {showCalc && <div style={{ marginTop: 14 }}><Card pad={16} accent={T.brass}><Label>How this was calculated</Label><p style={{ fontSize: 13.5, color: T.slate, margin: "8px 0 10px" }}>Telos assessed each dimension 0 to 100 from your interview and experience. Profile Strength is the weighted average.</p><div style={{ display: "grid", gap: 5 }}>{result.dimensions.map((d, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", fontFamily: F.mono, fontSize: 12, color: T.slate }}><span>{d.name}</span><span>{d.score} × {WEIGHTS[d.name]?.toFixed(2)}</span></div>)}<div style={{ display: "flex", justifyContent: "space-between", fontFamily: F.mono, fontSize: 12.5, color: T.emerald, borderTop: `1px solid ${T.mute}`, paddingTop: 6, marginTop: 2 }}><span>weighted average</span><span>{result.profileStrength}</span></div></div></Card></div>}
     <div className="dash" style={{ marginTop: 18 }}>
       <Card><Label>Dimension scores</Label><div style={{ display: "grid", gap: 18, marginTop: 14 }}>{result.dimensions.map((d, i) => {
         const b = BAND(d.score); const open = openDims[i]; const low = d.score < 60;
@@ -1753,7 +1754,7 @@ function Upskill({ result, points, setPoints }) {
   const recId = (MODULES[result.weakest?.name] || {}).id; const list = Object.values(MODULES); const [done, setDone] = useState({});
   const complete = m => { if (done[m.id]) return; setDone(d => ({ ...d, [m.id]: true })); setPoints(p => p + m.pts); };
   return <Scroll><div style={{ maxWidth: 860, margin: "0 auto" }} className="rise">
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}><div><Eyebrow>Upskilling journey</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 0" }}>Close the gap, earn the tier</h2></div><div style={{ textAlign: "right" }}><div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 30, color: T.brass, lineHeight: 1 }}>{points}</div><div style={{ fontFamily: F.mono, fontSize: 11, color: T.slate }}>reward points</div></div></div>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}><div><Eyebrow>Path to 1%</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 0" }}>Close the gap, reach the top tier</h2></div><div style={{ textAlign: "right" }}><div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 30, color: T.brass, lineHeight: 1 }}>{points}</div><div style={{ fontFamily: F.mono, fontSize: 11, color: T.slate }}>reward points</div></div></div>
     <div className="mods" style={{ marginTop: 20 }}>{list.map(m => { const isRec = m.id === recId, finished = done[m.id]; return <Card key={m.id} accent={isRec ? T.brass : T.line}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><Label>{isRec ? "recommended for you" : "module"}</Label>{finished && <span style={{ fontFamily: F.mono, fontSize: 11, color: T.emerald }}>completed</span>}</div><div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 17, marginTop: 8 }}>{m.title}</div><p style={{ fontSize: 13.5, color: T.slate, margin: "6px 0 14px" }}>{m.blurb}</p><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontFamily: F.mono, fontSize: 12, color: T.emerald }}>+{m.pts} pts</span><Btn kind={finished ? "ghost" : "primary"} small disabled={finished} onClick={() => complete(m)}>{finished ? "Done" : "Complete module"}</Btn></div></Card>; })}</div>
     <div style={{ marginTop: 18 }}><Card><Label>Achievements</Label><div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}><Badge on label="Profile verified" /><Badge on={result.profileStrength >= 50} label="Silver reached" /><Badge on={result.profileStrength >= 70} label="Gold reached" /><Badge on={Object.keys(done).length >= 1} label="First module" /><Badge on={points >= 500} label="500 points" /></div></Card></div>
     <div style={{ height: 30 }} />
@@ -1787,7 +1788,7 @@ function EmpWelcome({ onNext, onBack }) {
     {onBack && <Back onClick={onBack} />}
     <Eyebrow>For employers</Eyebrow>
     <h1 style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 34, letterSpacing: 0.3, lineHeight: 1.12, margin: "8px 0 10px" }}>Hire verified African talent with the risk carried for you</h1>
-    <p style={{ color: T.slateLg, fontSize: 16, maxWidth: 520, marginBottom: 26 }}>Search by evidence, not keywords, with identity shielded until you commit.</p>
+    <p style={{ color: T.slateLg, fontSize: 16, maxWidth: 520, marginBottom: 26 }}>Search by evidence, with identity shielded until you commit.</p>
     <Btn onClick={onNext}>Get started</Btn>
   </div></Centered>;
 }
@@ -1846,7 +1847,7 @@ function EmpDashboard({ company, onEngage }) {
     <Eyebrow>Dashboard</Eyebrow>
     <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>{company.name || "Your company"}</h2>
     <p style={{ color: T.slate, fontSize: 15, marginBottom: 18 }}>Welcome to Fumana. Your organization is set up. Engage verified, bias-shielded talent whenever you are ready.</p>
-    <Card><Label>Get started</Label><div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 18, margin: "8px 0 6px" }}>Engage experts</div><p style={{ fontSize: 13.5, color: T.slate, marginBottom: 14 }}>Describe the work and search the network by evidence, not keywords.</p><Btn onClick={onEngage}>Engage Experts</Btn></Card>
+    <Card><Label>Get started</Label><div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 18, margin: "8px 0 6px" }}>Engage experts</div><p style={{ fontSize: 13.5, color: T.slate, marginBottom: 14 }}>Describe the work and search the network by evidence.</p><Btn onClick={onEngage}>Engage Experts</Btn></Card>
   </div></Scroll>;
 }
 
@@ -2022,7 +2023,7 @@ function Search({ builders, pipeline, onShortlist, onRequestInterview, saved, on
   const inPipeline = h => pipeline.shortlisted.concat(pipeline.interviewing, pipeline.sow).some(x => x.handle === h);
   const shortlisted = h => pipeline.shortlisted.some(x => x.handle === h);
   return <Scroll><div style={{ maxWidth: 900, margin: "0 auto" }} className="rise">
-    <Eyebrow>Engage Experts</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Engage experts by evidence, not keywords</h2>
+    <Eyebrow>Engage Experts</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Engage experts by evidence</h2>
     <p style={{ color: T.slate, fontSize: 15, marginBottom: 16 }}>Describe the work and the budget. Matches are bias-shielded: no name, photo, or location. Role and summary stay hidden until you commit to an interview.</p>
     <Card><Label>What you need</Label>
       <textarea rows={3} value={need} onChange={e => setNeed(e.target.value)} style={{ width: "100%", marginTop: 7, background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11, fontSize: 14, resize: "vertical" }} />
@@ -2138,7 +2139,7 @@ function Compliance({ active, sow, setSow }) {
   async function gen() {
     setBusy(true); setErr("");
     try {
-      const sys = "You are the Fumana procurement engine acting as Employer of Record. Draft a concise Statement of Work for an enterprise client engaging a vetted builder through Fumana. Fumana acts as the IP custodian and as the legal Employer of Record, assuming local employment liability and tax remittance. Use general, honest language only. Do not assert specific tax rates and do not make jurisdiction-specific legal claims. Return ONLY JSON, no fences. Shape: {\"title\":string,\"scope\":[string],\"deliverables\":[string],\"ip_clause\":string,\"eor_note\":string,\"term\":string}. Keep each line tight. No em dashes.";
+      const sys = "You are the Telos Compliance Agent, acting as Employer of Record for Fumana. Draft a concise Statement of Work for an enterprise client engaging a vetted builder through Fumana. Fumana acts as the IP custodian and as the legal Employer of Record, assuming local employment liability and tax remittance. Use general, honest language only. Do not assert specific tax rates and do not make jurisdiction-specific legal claims. Return ONLY JSON, no fences. Shape: {\"title\":string,\"scope\":[string],\"deliverables\":[string],\"ip_clause\":string,\"eor_note\":string,\"term\":string}. Keep each line tight. No em dashes.";
       const out = await callClaude({ system: sys, messages: [{ role: "user", content: `Builder: ${active.handle}, ${active.role}. Monthly USD ${active.monthlyUsd}. Context: ${active.summary}` }], expectJson: true });
       setSow(out);
     } catch (e) {
@@ -2151,8 +2152,8 @@ function Compliance({ active, sow, setSow }) {
     <p style={{ color: T.slate, fontSize: 15, marginBottom: 14 }}>Fumana signs as Employer of Record and assumes local employment liability, tax remittance, and IP custody.</p>
     <div style={{ marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 8, fontFamily: F.mono, fontSize: 12, color: T.emerald, border: `1px solid ${T.emerald}`, borderRadius: 6, padding: "5px 11px" }}>&#10003; liability assumed</div>
     {!sow && <div>
-      {busy ? <Spinner label="Zuri is drafting the SOW..." /> : <Btn onClick={gen}>Generate localized SOW</Btn>}
-      {!busy && err === "config" && <div style={{ marginTop: 12, fontSize: 13.5, color: T.slate }}>Zuri's SOW drafting is ready and wired through the model proxy. It lights up the moment a model provider is connected.</div>}
+      {busy ? <Spinner label="The Telos Compliance Agent is drafting the SOW..." /> : <Btn onClick={gen}>Generate localized SOW</Btn>}
+      {!busy && err === "config" && <div style={{ marginTop: 12, fontSize: 13.5, color: T.slate }}>The Telos Compliance Agent is ready and wired through the model proxy. It lights up the moment a model provider is connected.</div>}
       {!busy && err === "fail" && <div style={{ marginTop: 12, color: T.alert, fontSize: 14, display: "flex", gap: 12, alignItems: "center" }}>Draft did not complete. <Btn kind="ghost" small onClick={gen}>Run again</Btn></div>}
     </div>}
     {sow && <Card accent={T.brass}>
@@ -2163,7 +2164,7 @@ function Compliance({ active, sow, setSow }) {
       <Mini label="IP custody" body={sow.ip_clause} />
       <Mini label="Employer of Record" body={sow.eor_note} />
       <Mini label="Term" body={sow.term} />
-      <ZuriNote />
+      <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 10.5, color: T.slate }}>Drafted by the Telos Compliance Agent from your inputs. It is a starting point, not settled legal fact.</div>
       <div style={{ marginTop: 14 }}><Btn kind="ghost" small onClick={() => setSow(null)}>Redraft</Btn></div>
     </Card>}
   </div></Scroll>;
@@ -2174,7 +2175,7 @@ const Mini = ({ label, body }) => <div style={{ marginTop: 10, background: T.pap
 // Investments and fee waterfall (employer). NO MODEL — every figure is computed
 // in code from the SOW contract budget, every assumption labelled. (Zuri the
 // marketplace economist is a NEEDS MODEL feature and arrives in Phase 2.)
-// Impact stat tile for the employer Investments "Verifiable impact" section.
+// Impact stat tile for the employer Investments "SROI Ledger" section.
 // Every value is computed in code; `note` states the formula or assumption.
 const ImpactStat = ({ n, label, note }) => <div style={{ background: T.paper, border: `1px solid ${T.line}`, borderRadius: 10, padding: "13px 15px" }}>
   <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 22, color: T.emerald, lineHeight: 1 }}>{n}</div>
@@ -2214,7 +2215,7 @@ function Finance({ pipeline }) {
   async function askEconomist() {
     setZBusy(true); setZErr(""); setZNote("");
     try {
-      const sys = "You are Zuri, the Fumana marketplace economist. You are warm in manner and honest in substance: kind about how you say things, honest about what is true. An employer is engaging an African builder at a monthly USD budget. In three or four plain sentences, tell them honestly whether this budget is competitive for this role in the African talent market, what that pay buys locally in purchasing-power terms, and one thing they should know. Use purchasing power parity context, speak in ranges not invented exact figures, and never present a number as a settled fact. No hype, no flattery, no em dashes, sentence case.";
+      const sys = "You are the Telos Economics Agent for Fumana. You are precise and honest. An employer is engaging an African builder at a monthly USD budget. In three or four plain sentences, state whether this budget is competitive for this role in the African talent market, what that pay buys locally in purchasing-power terms, and one thing the employer should know. Use purchasing power parity context, speak in ranges not invented exact figures, and never present a number as a settled fact. No hype, no flattery, no em dashes, sentence case.";
       setZNote(await callClaude({ system: sys, messages: [{ role: "user", content: `Role: ${subject.role}. Monthly budget: ${usd(subject.monthlyUsd || 0)} USD.` }], expectJson: false }));
     } catch (e) {
       setZErr(String(e).includes("501") ? "config" : "fail");
@@ -2258,8 +2259,8 @@ function Finance({ pipeline }) {
     </Card></div>
 
     <div style={{ marginTop: 16 }}><Card accent={T.brass}>
-      <Label>Verifiable impact</Label>
-      <p style={{ fontSize: 13.5, color: T.slate, margin: "8px 0 14px" }}>Aggregate impact across your active engagements. What an impact investor would want to see: computed and auditable, not claimed.</p>
+      <Label>SROI Ledger</Label>
+      <p style={{ fontSize: 13.5, color: T.slate, margin: "8px 0 14px" }}>Auditable social return on investment, tracked against SDG 8, 9, and 17. Powered by the Global Impact Commons. Maintained by Lexington Advisory Group.</p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(165px, 1fr))", gap: 12 }}>
         <ImpactStat n={usd(localRetained)} label="Local capital retained / yr" note={`net pay ${usd(totalNet)} × 12 × 62% retention`} />
         <ImpactStat n={team.length} label={`builder${team.length === 1 ? "" : "s"} engaged`} note="active SOW engagements" />
@@ -2270,16 +2271,16 @@ function Finance({ pipeline }) {
     </Card></div>
 
     <div style={{ marginTop: 16 }}><Card accent={zNote ? T.emerald : T.line}>
-      <Label>Zuri . marketplace economist</Label>
-      <div style={{ fontSize: 13, color: T.slate, marginTop: 6 }}>Honest, PPP-aware context on {subject.handle}'s {usd(subject.monthlyUsd || 0)} / month for a {subject.role} role.{team.length > 1 ? ` ${team.length - 1} more engagement${team.length - 1 === 1 ? "" : "s"} not shown.` : ""}</div>
+      <Label>Telos Economics Agent</Label>
+      <div style={{ fontSize: 13, color: T.slate, marginTop: 6 }}>PPP-aware context on {subject.handle}'s {usd(subject.monthlyUsd || 0)} / month for a {subject.role} role.{team.length > 1 ? ` ${team.length - 1} more engagement${team.length - 1 === 1 ? "" : "s"} not shown.` : ""}</div>
       {zBusy
-        ? <div style={{ marginTop: 12 }}><Spinner label="Zuri is checking the market..." /></div>
+        ? <div style={{ marginTop: 12 }}><Spinner label="The Telos Economics Agent is checking the market..." /></div>
         : zErr === "config"
-          ? <p style={{ marginTop: 10, fontSize: 13.5, color: T.slate }}>Zuri's economist is ready and wired through the model proxy. It lights up the moment a model provider is connected.</p>
+          ? <p style={{ marginTop: 10, fontSize: 13.5, color: T.slate }}>The Telos Economics Agent is ready and wired through the model proxy. It lights up the moment a model provider is connected.</p>
           : zErr === "fail"
-            ? <div style={{ marginTop: 10, color: T.alert, fontSize: 14, display: "flex", gap: 12, alignItems: "center" }}>Zuri did not respond. <Btn kind="ghost" small onClick={askEconomist}>Try again</Btn></div>
+            ? <div style={{ marginTop: 10, color: T.alert, fontSize: 14, display: "flex", gap: 12, alignItems: "center" }}>The Telos Economics Agent did not respond. <Btn kind="ghost" small onClick={askEconomist}>Try again</Btn></div>
             : zNote
-              ? <><p style={{ marginTop: 12, fontSize: 14, lineHeight: 1.6 }}>{zNote}</p><ZuriNote /></>
+              ? <><p style={{ marginTop: 12, fontSize: 14, lineHeight: 1.6 }}>{zNote}</p><div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 10.5, color: T.slate }}>The Telos Economics Agent works from evidence. It does not assert financial fact.</div></>
               : <div style={{ marginTop: 12 }}><Btn kind="ghost" small onClick={askEconomist}>Is this budget competitive?</Btn></div>}
     </Card></div>
     <FigNote />
@@ -2377,7 +2378,6 @@ function Shell({ role, exit, nav, active, onNav, children, showZuri }) {
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
         <NotificationBell />
         <button onClick={exit} style={{ fontFamily: F.mono, fontSize: 11, color: "#9FB0BC", background: "transparent", border: "1px solid #24343F", borderRadius: 6, padding: "5px 10px", cursor: "pointer" }}>switch role</button>
-        <span style={{ fontFamily: F.mono, fontSize: 11, color: "#3E8E7E" }}>Powered by Telos</span>
       </div>
     </header>
     {hasNav && <nav className="fside" aria-label={`${role} navigation`}>
@@ -2387,6 +2387,7 @@ function Shell({ role, exit, nav, active, onNav, children, showZuri }) {
     {hasNav && <nav className="fbot" aria-label={`${role} navigation`}>
       {nav.map(([k, lbl]) => <button key={k} className={"fbotItem" + (active === k ? " on" : "")} aria-current={active === k ? "page" : undefined} onClick={() => onNav(k)}>{lbl}</button>)}
     </nav>}
+    <footer className="ffoot">&copy; FIND Services Limited. Powered by Telos. Designed by Lexington Advisory Group.</footer>
     {showZuri && <ZuriDock role={role} />}
   </div>;
 }
