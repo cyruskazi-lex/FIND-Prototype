@@ -934,14 +934,17 @@ const cvNormalize = c => ({
   education: c.education || [], tools: c.tools || [], languages: c.languages || [],
   integrity_note: c.integrity_note || "",
 });
+// Telos audit line: a fixed, code-authored verification mark (not model text).
+// Zuri conducts the interview; the Telos Ingestion Agent extracts and audits.
+const TELOS_AUDIT = "The Telos Ingestion Agent confirms: every claim in this document traces to something you said in this interview. Nothing was inferred or invented.";
 function cvToText(cv, name) {
-  const L = [name || "Your name"];
+  const L = [name || "Your name", "", "TELOS AUDIT", TELOS_AUDIT];
   if (cv.personal_statement) L.push("", cv.personal_statement);
   const sec = (t, arr) => { if (arr && arr.length) { L.push("", t.toUpperCase()); arr.forEach(x => L.push("- " + x)); } };
   sec("Skills", cv.skills);
   if (cv.experience && cv.experience.length) { L.push("", "EXPERIENCE"); cv.experience.forEach(e => { L.push([e.role, e.organisation].filter(Boolean).join(", ") + (e.period ? ` (${e.period})` : "")); (e.outcomes || []).forEach(o => L.push("  - " + o)); }); }
   sec("Education", cv.education); sec("Tools and technologies", cv.tools); sec("Languages", cv.languages);
-  if (cv.integrity_note) L.push("", cv.integrity_note);
+  L.push("", "Extracted by the Telos Ingestion Agent.");
   return L.join("\n");
 }
 function EditList({ items, onChange, placeholder }) {
@@ -997,7 +1000,7 @@ function CVBuilder({ profile, saveCV, onBack }) {
   async function build(transcript) {
     setPhase("building"); setErr("");
     try {
-      const sys = "You are Zuri, building a CV strictly from the candidate's own words in this interview. Extract only what they said. Never invent, infer, or embellish. If something was not mentioned, leave that array empty. Warm, honest, plain, no em dashes. Return ONLY JSON, no fences: {\"personal_statement\":string,\"skills\":[string],\"experience\":[{\"role\":string,\"organisation\":string,\"period\":string,\"outcomes\":[string]}],\"education\":[string],\"tools\":[string],\"languages\":[string],\"integrity_note\":string}. The integrity_note must confirm in one plain sentence that every line was drawn only from what the candidate said and nothing was invented.";
+      const sys = "You are the Telos Ingestion Agent, extracting and auditing a CV strictly from the candidate's own words captured in Zuri's interview. Extract only what they said. Never invent, infer, or embellish. If something was not mentioned, leave that array empty. Honest, plain, no em dashes. Return ONLY JSON, no fences: {\"personal_statement\":string,\"skills\":[string],\"experience\":[{\"role\":string,\"organisation\":string,\"period\":string,\"outcomes\":[string]}],\"education\":[string],\"tools\":[string],\"languages\":[string],\"integrity_note\":string}. The integrity_note must confirm in one plain sentence that every line was drawn only from what the candidate said and nothing was invented.";
       const t = transcript.map((x, i) => `Q${i + 1}: ${x.q}\nA${i + 1}: ${x.a}`).join("\n\n");
       const out = await callClaude({ system: sys, messages: [{ role: "user", content: `Anything the candidate wrote earlier (may be empty):\n${profile.experience || "(none)"}\n\nInterview:\n${t}` }], expectJson: true });
       setCv(cvNormalize(out)); setPhase("review");
@@ -1052,9 +1055,17 @@ function CVBuilder({ profile, saveCV, onBack }) {
     </div>}
 
     {phase === "review" && cv && <div>
+      <div className="noprint" style={{ borderLeft: `4px solid ${T.alert}`, background: "rgba(168,67,31,0.06)", borderRadius: 8, padding: "13px 16px", marginBottom: 16 }}>
+        <div style={{ fontSize: 14.5, color: T.ink, fontWeight: 700, lineHeight: 1.5 }}>Review every section before this document leaves your hands.</div>
+        <div style={{ fontSize: 13.5, color: T.slate, marginTop: 3 }}>It represents your professional record. Correct anything that is wrong or missing before copying or downloading.</div>
+      </div>
       <div id="cvprint" style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 24 }}>
         <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 24 }}>{profile.name || "Your name"}</div>
         {profile.role && <div style={{ color: T.slate, fontSize: 14, marginTop: 2 }}>{profile.role}</div>}
+        <div style={{ borderLeft: `3px solid ${T.emerald}`, background: "rgba(6,110,90,0.06)", padding: "10px 14px", margin: "16px 0 2px" }}>
+          <div style={{ fontFamily: F.mono, fontSize: 10.5, color: T.slateLg, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 4 }}>Telos audit</div>
+          <div style={{ fontSize: 13, color: T.ink, lineHeight: 1.6 }}>{TELOS_AUDIT}</div>
+        </div>
         <Section title="Personal statement">
           <textarea className="screen-only" rows={3} value={cv.personal_statement} onChange={e => up({ personal_statement: e.target.value })} style={ta} />
           <p className="print-only" style={{ fontSize: 13.5, lineHeight: 1.6 }}>{cv.personal_statement}</p>
@@ -1077,7 +1088,7 @@ function CVBuilder({ profile, saveCV, onBack }) {
         <Section title="Education"><EditList items={cv.education} onChange={v => up({ education: v })} placeholder="A qualification or course" /></Section>
         <Section title="Tools and technologies"><EditList items={cv.tools} onChange={v => up({ tools: v })} placeholder="A tool" /></Section>
         <Section title="Languages"><EditList items={cv.languages} onChange={v => up({ languages: v })} placeholder="A language" /></Section>
-        {cv.integrity_note && <div style={{ marginTop: 18, fontFamily: F.mono, fontSize: 11, color: T.slate, borderTop: `1px solid ${T.mute}`, paddingTop: 10 }}>{cv.integrity_note}</div>}
+        <div style={{ marginTop: 18, fontFamily: F.mono, fontSize: 10.5, color: T.slateLg, borderTop: `1px solid ${T.mute}`, paddingTop: 10 }}>Extracted by the Telos Ingestion Agent.</div>
       </div>
       <div className="noprint" style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap" }}>
         <Btn small disabled={saved} onClick={saveIt}>{saved ? "Saved" : "Save to profile"}</Btn>
