@@ -16,6 +16,8 @@
 // To add a provider, add one entry to PROVIDERS below. The route, the request
 // shape, and the { text } response shape never change.
 
+import { demoText } from "./demo-responses.js";
+
 const MAX_TOKENS = 1024;
 
 // Each adapter takes the normalized request and returns { status, text?, error? }.
@@ -64,19 +66,25 @@ function makeHandler(env) {
   return async (req, res) => {
     if (req.method !== "POST") { res.statusCode = 405; res.end("Method Not Allowed"); return; }
     try {
-      const providerName = (env.LLM_PROVIDER || "").trim().toLowerCase();
-      const key = env.LLM_API_KEY;
-      // Inert until BOTH a provider and a key are configured.
-      if (!providerName || !key) return send(res, 501, { error: "LLM provider is not configured on the server" });
-      const provider = PROVIDERS[providerName];
-      if (!provider) return send(res, 500, { error: `Unknown LLM_PROVIDER "${providerName}"` });
-
       const chunks = [];
       for await (const c of req) chunks.push(c);
       const body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
       const messages = Array.isArray(body.messages) ? body.messages : [];
       if (!messages.length) return send(res, 400, { error: "Missing messages" });
       const system = body.system ? String(body.system) : "";
+
+      // Demo mode: intercept every request and return a pre-built response.
+      // No provider and no key are needed; nothing is sent to any provider.
+      if (String(env.DEMO_MODE || "").trim().toLowerCase() === "true") {
+        return send(res, 200, { text: demoText(system, messages) });
+      }
+
+      const providerName = (env.LLM_PROVIDER || "").trim().toLowerCase();
+      const key = env.LLM_API_KEY;
+      // Inert until BOTH a provider and a key are configured.
+      if (!providerName || !key) return send(res, 501, { error: "LLM provider is not configured on the server" });
+      const provider = PROVIDERS[providerName];
+      if (!provider) return send(res, 500, { error: `Unknown LLM_PROVIDER "${providerName}"` });
       const model = (env.LLM_MODEL || "").trim() || provider.defaultModel;
 
       const out = await provider.call({ key, model, system, messages });

@@ -36,6 +36,18 @@ FIND/
 - **Figures are computed, never generated.** Financial and impact numbers are calculated in code from visible inputs. The model narrates reasoning only.
 - **The match score is seeded.** The real Bayesian CCM engine does not exist yet. The confidence figure is a labelled demo value. The language output is live.
 
+## Run the demo
+
+No API key needed. Demo mode returns realistic pre-built responses, so every AI feature is live.
+
+```
+cd ~/FIND/app
+cp .env.demo .env
+npm run dev
+```
+
+Open http://localhost:5173.
+
 ## Running the prototype
 
 `prototype/FumanaDemo.jsx` is a single React component. It runs as-is inside Claude, where it was built and validated. To run it on a developer machine, drop it into a React build setup. In production the browser must not hold the Anthropic key. See `docs/api_integration_notes.md`.
