@@ -407,7 +407,7 @@ const PAYOUT_METHODS = [
 ];
 const WALLET_PLATFORM_PCT = 12, WALLET_STATUTORY_PCT = 18; // illustrative, matches the finance hub
 
-function Wallet({ builders, pipeline }) {
+function Wallet({ builders, pipeline, premium, onUpgrade }) {
   const me = builders.find(b => b.isYou);
   const toast = useToast();
   const [method, setMethod] = useState("mpesa");
@@ -435,7 +435,9 @@ function Wallet({ builders, pipeline }) {
     <div className="row2">
       <Card><Label>Available balance</Label>
         <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 34, color: T.emerald, margin: "8px 0 10px" }}>{usd(available)}</div>
-        <Btn small disabled={available <= 0} onClick={() => toast("Withdrawals run on the backend. This prototype is display only.")}>Withdraw to {methodName}</Btn>
+        {premium?.isPremium
+          ? <><Btn small disabled={available <= 0} onClick={() => toast("Withdrawals run on the backend. This prototype is display only.")}>Withdraw to {methodName}</Btn><div style={{ marginTop: 8, fontFamily: F.mono, fontSize: 11, color: T.emerald }}>Zero-commission withdrawal. Premium benefit.</div></>
+          : <><div style={{ fontSize: 13, color: T.slate, marginBottom: 10 }}>Zero-commission withdrawal: Premium only.</div><Btn small onClick={onUpgrade}>Upgrade to Premium</Btn></>}
       </Card>
       <Card accent={T.brass}><Label>In escrow</Label>
         <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 34, color: T.brass, margin: "8px 0 10px" }}>{usd(escrow)}</div>
@@ -790,7 +792,7 @@ function FairnessPosture({ onBack }) {
   </div></Scroll>;
 }
 
-function Settings({ builders, onFairness, onAudit, onReport, onEthics, logAudit }) {
+function Settings({ builders, onFairness, onAudit, onReport, onEthics, logAudit, premium, onUpgrade, onManage }) {
   const me = builders.find(b => b.isYou);
   const toast = useToast();
   const [lang, setLang] = useState("English");
@@ -817,6 +819,20 @@ function Settings({ builders, onFairness, onAudit, onReport, onEthics, logAudit 
     <Eyebrow>Settings and Comm</Eyebrow>
     <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Settings and communication</h2>
     <p style={{ color: T.slate, fontSize: 15, marginBottom: 18 }}>Your language, how we reach you, security, and the data Fumana holds about you.</p>
+
+    <Card accent={T.brass}><Label>{premium?.isPremium ? "FIND Premium Pro" : "Plan"}</Label>
+      {premium?.isPremium
+        ? <>
+          <div style={{ fontSize: 14, color: T.ink, margin: "8px 0 12px" }}>FIND Premium Pro. Active since {premium.premiumSince}.</div>
+          <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}><Btn small kind="ghost" onClick={onManage}>Manage subscription</Btn><button onClick={onManage} style={{ background: "none", border: "none", color: T.slate, fontFamily: F.mono, fontSize: 11.5, cursor: "pointer", textDecoration: "underline" }}>Cancel subscription</button></div>
+        </>
+        : <>
+          <div style={{ fontSize: 14, color: T.slate, margin: "8px 0 10px" }}>Current plan: Free. Upgrade to FIND Premium Pro for {PREMIUM_PRICE}.</div>
+          <ul style={{ listStyle: "none", display: "grid", gap: 7, margin: "0 0 14px", fontSize: 13.5 }}>{PREMIUM_FEATURES.map((ftr, i) => <li key={i} style={{ display: "flex", gap: 8 }}><span style={{ color: T.emerald }}>✓</span><span>{ftr}</span></li>)}</ul>
+          <Btn small onClick={onUpgrade}>Upgrade to Premium</Btn>
+        </>}
+    </Card>
+    <div style={{ height: 14 }} />
 
     <Card><Label>Language</Label>
       <select value={lang} onChange={e => setLang(e.target.value)} style={{ ...ctrl, width: "100%" }}>{LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}</select>
@@ -1158,7 +1174,7 @@ const MARKETS = [
   { id: "newyork", name: "New York, USA", col: 100 },
 ];
 
-function GlobalWorth({ profile, builders, pipeline }) {
+function GlobalWorth({ profile, builders, pipeline, premium, onUpgrade }) {
   const me = builders.find(b => b.isYou);
   const offer = me ? pipeline.sow.find(x => x.handle === me.handle) : null;
   const [role, setRole] = useState(profile.role || (me && me.role) || "");
@@ -1173,6 +1189,7 @@ function GlobalWorth({ profile, builders, pipeline }) {
   const multiplier = (100 / market.col).toFixed(1);
   const annual = m * 12;
 
+  if (!premium?.isPremium) return <PremiumLock title="Global Worth Simulator" onUpgrade={onUpgrade} />;
   return <Scroll><div style={{ maxWidth: 880, margin: "0 auto" }} className="rise">
     <Eyebrow>Global Worth Simulator</Eyebrow>
     <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>What your pay is worth around the world</h2>
@@ -1219,7 +1236,7 @@ function GlobalWorth({ profile, builders, pipeline }) {
 // role and region, what to ask for, and how to phrase it. Routes through the
 // /api/claude proxy; inert (a clear waiting state) until a provider is set.
 // The pay band is explicitly the model's illustrative guidance, not a quote.
-function NegotiationCoach({ profile, builders, pipeline }) {
+function NegotiationCoach({ profile, builders, pipeline, premium, onUpgrade }) {
   const me = builders.find(b => b.isYou);
   const activeOffer = me ? pipeline.sow.find(x => x.handle === me.handle) : null;
   const [role, setRole] = useState(profile.role || (me && me.role) || "");
@@ -1242,6 +1259,7 @@ function NegotiationCoach({ profile, builders, pipeline }) {
     setBusy(false);
   }
 
+  if (!premium?.isPremium) return <PremiumLock title="Negotiation Coach" onUpgrade={onUpgrade} />;
   return <Scroll><div style={{ maxWidth: 760, margin: "0 auto" }} className="rise">
     <Eyebrow>Negotiation Coach</Eyebrow>
     <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Think through your offer with Zuri</h2>
@@ -1281,6 +1299,55 @@ function NegotiationCoach({ profile, builders, pipeline }) {
   </div></Scroll>;
 }
 
+// ---- FIND Premium Pro (candidate freemium gating). NO MODEL, no real payment ----
+const PREMIUM_PRICE = "$4.99/month";
+const PREMIUM_FEATURES = [
+  "Priority enterprise matching",
+  "Zero-commission escrow withdrawals; the 12% platform fee waived on payouts",
+  "Unlimited upskilling modules",
+  "The Negotiation Coach",
+  "The Global Worth Simulator",
+];
+const LockIcon = ({ size = 12 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4.5" y="11" width="15" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>;
+
+function PremiumLock({ title, onUpgrade }) {
+  return <Scroll><div style={{ maxWidth: 760, margin: "0 auto" }} className="rise">
+    <Eyebrow>Premium</Eyebrow>
+    <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "8px 0 6px" }}>{title}</h2>
+    <Card accent={T.brass}>
+      <div style={{ display: "inline-flex", alignItems: "center", gap: 7, color: T.brass }}><LockIcon /><Label>Premium feature</Label></div>
+      <p style={{ fontSize: 14, color: T.slate, margin: "10px 0 14px" }}>Available on FIND Premium Pro. Upgrade in Settings.</p>
+      <Btn small onClick={onUpgrade}>Upgrade to Premium</Btn>
+    </Card>
+  </div></Scroll>;
+}
+
+function UpgradeModal({ open, onClose, onComplete }) {
+  const toast = useToast();
+  const [step, setStep] = useState("plan"); // plan | pay
+  const [card, setCard] = useState(""); const [exp, setExp] = useState(""); const [cvv, setCvv] = useState("");
+  useEffect(() => { if (open) { setStep("plan"); setCard(""); setExp(""); setCvv(""); } }, [open]);
+  if (!open) return null;
+  return <Modal titleId="upgrade-title" onClose={onClose}>
+    {step === "plan" ? <>
+      <Eyebrow>FIND Premium Pro</Eyebrow>
+      <h3 id="upgrade-title" style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 20, margin: "8px 0 6px" }}>Upgrade to Premium</h3>
+      <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 26, color: T.emerald }}>{PREMIUM_PRICE}</div>
+      <ul style={{ listStyle: "none", display: "grid", gap: 8, margin: "14px 0", fontSize: 14 }}>{PREMIUM_FEATURES.map((ftr, i) => <li key={i} style={{ display: "flex", gap: 9 }}><span style={{ color: T.emerald }}>✓</span><span>{ftr}</span></li>)}</ul>
+      <Btn full onClick={() => setStep("pay")}>Continue to payment</Btn>
+      <div style={{ marginTop: 12, textAlign: "center" }}><button onClick={() => toast("No previous purchase found in this sandbox.")} style={{ background: "none", border: "none", color: T.slate, fontFamily: F.mono, fontSize: 11.5, cursor: "pointer", textDecoration: "underline" }}>Restore purchase</button></div>
+    </> : <>
+      <Eyebrow>Payment</Eyebrow>
+      <h3 id="upgrade-title" style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 20, margin: "8px 0 6px" }}>Payment details</h3>
+      <div style={{ background: "rgba(176,138,46,0.10)", border: `1px solid ${T.brass}`, borderRadius: 8, padding: "8px 12px", fontFamily: F.mono, fontSize: 11.5, color: T.brass, margin: "0 0 14px" }}>Sandbox. No real payment processed.</div>
+      <Field label="Card number" value={card} onChange={setCard} placeholder="4242 4242 4242 4242" />
+      <div className="row2"><Field label="Expiry" value={exp} onChange={setExp} placeholder="MM/YY" /><Field label="CVV" value={cvv} onChange={setCvv} placeholder="123" /></div>
+      <div style={{ marginTop: 4, display: "flex", gap: 10 }}><Btn onClick={() => { onComplete(); onClose(); }}>Complete upgrade</Btn><Btn kind="ghost" onClick={() => setStep("plan")}>Back</Btn></div>
+      <div style={{ marginTop: 12, fontFamily: F.mono, fontSize: 10.5, color: T.slate }}>Sandbox only. No card is charged and no data is stored.</div>
+    </>}
+  </Modal>;
+}
+
 function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leaveSquad, formSquad, audit, logAudit, exit, toRole }) {
   const [screen, setScreen] = useState("signin");
   const [profile, setProfile] = useState({ name: "", role: "", city: "", experience: "" });
@@ -1288,6 +1355,11 @@ function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leave
   const [result, setResult] = useState(null);
   const [points, setPoints] = useState(0);
   const [culture, setCulture] = useState(null); // best Culture Shock Simulator score
+  const [premium, setPremium] = useState({ isPremium: false, premiumSince: null });
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const openUpgrade = () => setUpgradeOpen(true);
+  function completeUpgrade() { setPremium({ isPremium: true, premiumSince: new Date().toISOString().slice(0, 10) }); toast("Welcome to FIND Premium Pro"); }
+  const manageSub = () => toast("Subscription management is a backend step.");
   const [published, setPublished] = useState(false);
   const toast = useToast();
   const inApp = CAND_NAV.some(([k]) => k === screen) || ["fairness", "audit", "report", "ethics", "cvbuilder"].includes(screen);
@@ -1304,27 +1376,28 @@ function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leave
     toast("You are in the network. Your profile is live to employers, identity shielded.");
   }
 
-  return <Shell role="candidate" exit={exit} nav={inApp ? CAND_NAV : null} active={screen} onNav={setScreen} showZuri={!NO_DOCK_SCREENS.includes(screen)}>
+  return <Shell role="candidate" exit={exit} nav={inApp ? CAND_NAV : null} active={screen} onNav={setScreen} showZuri={!NO_DOCK_SCREENS.includes(screen)} premiumBadge={premium.isPremium} locked={premium.isPremium ? [] : ["coach", "worth"]}>
     {screen === "signin" && <AuthFormPage role="builder" onBack={toRole} onAuthenticated={() => setScreen("consent")} />}
     {screen === "consent" && <Consent onNext={() => setScreen("onboarding")} onBack={() => setScreen("signin")} />}
     {screen === "onboarding" && <Onboarding profile={profile} setProfile={setProfile} onNext={() => setScreen("assessinfo")} onBack={() => setScreen("consent")} />}
     {screen === "assessinfo" && <AssessInfo accommodations={accommodations} setAccommodations={setAccommodations} onOptIn={() => { if (accommodations.extraTime || accommodations.textOnly || accommodations.written) logAudit({ kind: "accommodations", ...accommodations }); setScreen("interview"); }} onOptOut={() => setScreen("humanreview")} onBack={() => setScreen("onboarding")} />}
     {screen === "humanreview" && <HumanReview onSwitch={() => setScreen("interview")} />}
     {screen === "interview" && <Interview profile={profile} accommodations={accommodations} onBack={() => setScreen("assessinfo")} onComplete={finish} />}
-    {screen === "dashboard" && result && <Dashboard profile={profile} result={result} onUpskill={() => setScreen("upskill")} published={published} audit={audit} logAudit={logAudit} culture={culture} />}
-    {screen === "upskill" && result && <Upskill result={result} points={points} setPoints={setPoints} culture={culture} setCulture={setCulture} logAudit={logAudit} />}
+    {screen === "dashboard" && result && <Dashboard profile={profile} result={result} onUpskill={() => setScreen("upskill")} published={published} audit={audit} logAudit={logAudit} culture={culture} premium={premium} onUpgrade={openUpgrade} />}
+    {screen === "upskill" && result && <Upskill result={result} points={points} setPoints={setPoints} culture={culture} setCulture={setCulture} logAudit={logAudit} premium={premium} onUpgrade={openUpgrade} />}
     {screen === "applications" && <Applications builders={builders} pipeline={pipeline} />}
-    {screen === "wallet" && <Wallet builders={builders} pipeline={pipeline} />}
-    {screen === "coach" && <NegotiationCoach profile={profile} builders={builders} pipeline={pipeline} />}
-    {screen === "worth" && <GlobalWorth profile={profile} builders={builders} pipeline={pipeline} />}
+    {screen === "wallet" && <Wallet builders={builders} pipeline={pipeline} premium={premium} onUpgrade={openUpgrade} />}
+    {screen === "coach" && <NegotiationCoach profile={profile} builders={builders} pipeline={pipeline} premium={premium} onUpgrade={openUpgrade} />}
+    {screen === "worth" && <GlobalWorth profile={profile} builders={builders} pipeline={pipeline} premium={premium} onUpgrade={openUpgrade} />}
     {screen === "community" && <Community builders={builders} pipeline={pipeline} squads={squads} onJoin={joinSquad} onLeave={leaveSquad} onForm={formSquad} culture={culture} />}
     {screen === "alchemist" && <ExperienceAlchemist profile={profile} onBuildCV={() => setScreen("cvbuilder")} />}
     {screen === "cvbuilder" && <CVBuilder profile={profile} saveCV={cv => setProfile(p => ({ ...p, cv }))} onBack={() => setScreen("alchemist")} />}
-    {screen === "settings" && <Settings builders={builders} onFairness={() => setScreen("fairness")} onAudit={() => setScreen("audit")} onReport={() => setScreen("report")} onEthics={() => setScreen("ethics")} logAudit={logAudit} />}
+    {screen === "settings" && <Settings builders={builders} onFairness={() => setScreen("fairness")} onAudit={() => setScreen("audit")} onReport={() => setScreen("report")} onEthics={() => setScreen("ethics")} logAudit={logAudit} premium={premium} onUpgrade={openUpgrade} onManage={manageSub} />}
     {screen === "fairness" && <FairnessPosture onBack={() => setScreen("settings")} />}
     {screen === "audit" && <AuditTrail audit={audit} onBack={() => setScreen("settings")} />}
     {screen === "report" && <ReportIssue categories={REPORT_CATS_CANDIDATE} source="candidate" logAudit={logAudit} onBack={() => setScreen("settings")} />}
     {screen === "ethics" && <EthicsPage onBack={() => setScreen("settings")} />}
+    <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onComplete={completeUpgrade} />
   </Shell>;
 }
 
@@ -1736,7 +1809,7 @@ function TrajectoryForecast({ result }) {
   </Card>;
 }
 
-function Dashboard({ profile, result, onUpskill, published, audit, logAudit, culture }) {
+function Dashboard({ profile, result, onUpskill, published, audit, logAudit, culture, premium, onUpgrade }) {
   const tier = result.tier; const rec = MODULES[result.weakest?.name] || MODULES["Technical depth"];
   const [zuri, setZuri] = useState(""); const [zb, setZb] = useState(false); const [showCalc, setShowCalc] = useState(false);
   const [openDims, setOpenDims] = useState({});
@@ -1756,9 +1829,10 @@ function Dashboard({ profile, result, onUpskill, published, audit, logAudit, cul
   async function askZuri() { setZb(true); try { const sys = "You are Zuri, the career copilot inside Fumana. In three to four warm, direct sentences, tell this builder the single most valuable next move to raise their tier, grounded in their weakest dimension. No hype, no em dashes."; setZuri(await callClaude({ system: sys, messages: [{ role: "user", content: `Profile strength ${result.profileStrength}, tier ${tier.name}. Weakest: ${result.weakest?.name} at ${result.weakest?.score}. Role ${profile.role || "engineer"}.` }], expectJson: false })); } catch { setZuri("Zuri is unavailable right now."); } setZb(false); }
   return <Scroll><div style={{ maxWidth: 860, margin: "0 auto" }} className="rise">
     {published && <div style={{ marginBottom: 16, background: "rgba(6,110,90,0.06)", border: `1px solid ${T.emerald}`, borderRadius: 10, padding: "11px 14px", fontSize: 13.5, color: T.vault }}>✓ You are now in the network, identity shielded. Switch to the employer side and search to find yourself.</div>}
+    {!premium?.isPremium && <div style={{ marginBottom: 16, background: "rgba(176,138,46,0.08)", border: `1px solid ${T.brass}`, borderRadius: 10, padding: "11px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}><div style={{ fontSize: 13.5, color: T.ink }}><b>FIND Premium Pro.</b> Priority matching, zero-commission escrow, unlimited upskilling, and more for {PREMIUM_PRICE}.</div><Btn small onClick={onUpgrade}>Upgrade</Btn></div>}
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}>
       <div><Eyebrow>Growth dashboard</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 2px" }}>{profile.name || "Your"} profile</h2><div style={{ color: T.slate, fontSize: 14 }}>{profile.role} . {profile.city || "location hidden"}</div>{culture != null && <div style={{ marginTop: 8 }}><span style={{ fontFamily: F.mono, fontSize: 11.5, color: T.emerald, border: `1px solid ${T.emerald}`, borderRadius: 6, padding: "3px 9px" }}>✓ Culture Shock Simulator {culture}/100</span></div>}</div>
-      <div style={{ textAlign: "right" }}><div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 46, color: T.emerald, lineHeight: 1 }}>{result.profileStrength}</div><button onClick={() => setShowCalc(s => !s)} style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline" }}>profile strength . how is this calculated</button><div><span style={{ display: "inline-block", marginTop: 6, fontFamily: F.mono, fontSize: 12, color: T.onAccent, background: tier.color, borderRadius: 5, padding: "3px 10px" }}>{tier.name} tier</span></div><div style={{ marginTop: 6, display: "flex", gap: 14, justifyContent: "flex-end", flexWrap: "wrap" }}><ReviewLink what={`Profile Strength: ${result.profileStrength}`} /><button onClick={openContest} style={{ fontFamily: F.mono, fontSize: 11, color: T.brass, background: "transparent", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", whiteSpace: "nowrap" }}>Contest this score</button></div></div>
+      <div style={{ textAlign: "right" }}><div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 46, color: T.emerald, lineHeight: 1 }}>{result.profileStrength}</div><button onClick={() => setShowCalc(s => !s)} style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline" }}>profile strength . how is this calculated</button><div><span style={{ display: "inline-block", marginTop: 6, fontFamily: F.mono, fontSize: 12, color: T.onAccent, background: tier.color, borderRadius: 5, padding: "3px 10px" }}>{tier.name} tier</span></div>{premium?.isPremium && <div style={{ marginTop: 6, fontFamily: F.mono, fontSize: 11, color: T.brass }}>Premium member since {premium.premiumSince}</div>}<div style={{ marginTop: 6, display: "flex", gap: 14, justifyContent: "flex-end", flexWrap: "wrap" }}><ReviewLink what={`Profile Strength: ${result.profileStrength}`} /><button onClick={openContest} style={{ fontFamily: F.mono, fontSize: 11, color: T.brass, background: "transparent", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", whiteSpace: "nowrap" }}>Contest this score</button></div></div>
     </div>
     {showCalc && <div style={{ marginTop: 14 }}><Card pad={16} accent={T.brass}><Label>How this was calculated</Label><p style={{ fontSize: 13.5, color: T.slate, margin: "8px 0 10px" }}>Telos assessed each dimension 0 to 100 from your interview and experience. Profile Strength is the weighted average.</p><div style={{ display: "grid", gap: 5 }}>{result.dimensions.map((d, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", fontFamily: F.mono, fontSize: 12, color: T.slate }}><span>{d.name}</span><span>{d.score} × {WEIGHTS[d.name]?.toFixed(2)}</span></div>)}<div style={{ display: "flex", justifyContent: "space-between", fontFamily: F.mono, fontSize: 12.5, color: T.emerald, borderTop: `1px solid ${T.mute}`, paddingTop: 6, marginTop: 2 }}><span>weighted average</span><span>{result.profileStrength}</span></div></div></Card></div>}
     <div className="dash" style={{ marginTop: 18 }}>
@@ -1941,7 +2015,7 @@ function CultureShock({ culture, setCulture, logAudit }) {
   </Card></div>;
 }
 
-function Upskill({ result, points, setPoints, culture, setCulture, logAudit }) {
+function Upskill({ result, points, setPoints, culture, setCulture, logAudit, premium, onUpgrade }) {
   const recId = (MODULES[result.weakest?.name] || {}).id; const list = Object.values(MODULES); const [done, setDone] = useState({});
   const [tab, setTab] = useState("training");
   const complete = m => { if (done[m.id]) return; setDone(d => ({ ...d, [m.id]: true })); setPoints(p => p + m.pts); };
@@ -1952,7 +2026,7 @@ function Upskill({ result, points, setPoints, culture, setCulture, logAudit }) {
       {TABS.map(([k, lbl]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} style={{ background: "transparent", border: "none", borderBottom: `2px solid ${tab === k ? T.emerald : "transparent"}`, color: tab === k ? T.ink : T.slate, fontFamily: F.body, fontSize: 13.5, fontWeight: tab === k ? 600 : 400, padding: "8px 6px", cursor: "pointer" }}>{lbl}</button>)}
     </div>
     {tab === "training" && <>
-      <div className="mods" style={{ marginTop: 20 }}>{list.map(m => { const isRec = m.id === recId, finished = done[m.id]; return <Card key={m.id} accent={isRec ? T.brass : T.line}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><Label>{isRec ? "recommended for you" : "module"}</Label>{finished && <span style={{ fontFamily: F.mono, fontSize: 11, color: T.emerald }}>completed</span>}</div><div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 17, marginTop: 8 }}>{m.title}</div><p style={{ fontSize: 13.5, color: T.slate, margin: "6px 0 14px" }}>{m.blurb}</p><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontFamily: F.mono, fontSize: 12, color: T.emerald }}>+{m.pts} pts</span><Btn kind={finished ? "ghost" : "primary"} small disabled={finished} onClick={() => complete(m)}>{finished ? "Done" : "Complete module"}</Btn></div></Card>; })}</div>
+      <div className="mods" style={{ marginTop: 20 }}>{list.map((m, i) => { const isRec = m.id === recId, finished = done[m.id], locked = !premium?.isPremium && i >= 3; return <Card key={m.id} accent={isRec ? T.brass : T.line}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><Label>{isRec ? "recommended for you" : "module"}</Label>{finished && <span style={{ fontFamily: F.mono, fontSize: 11, color: T.emerald }}>completed</span>}{locked && <span style={{ fontFamily: F.mono, fontSize: 11, color: T.brass, display: "inline-flex", alignItems: "center", gap: 4 }}><LockIcon size={10} /> Premium</span>}</div><div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 17, marginTop: 8 }}>{m.title}</div><p style={{ fontSize: 13.5, color: T.slate, margin: "6px 0 14px" }}>{m.blurb}</p><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontFamily: F.mono, fontSize: 12, color: T.emerald }}>+{m.pts} pts</span>{locked ? <Btn small onClick={onUpgrade}>Unlock with Premium</Btn> : <Btn kind={finished ? "ghost" : "primary"} small disabled={finished} onClick={() => complete(m)}>{finished ? "Done" : "Complete module"}</Btn>}</div>{locked && <div style={{ marginTop: 8, fontFamily: F.mono, fontSize: 11, color: T.brass }}>Available on FIND Premium Pro. Upgrade in Settings.</div>}</Card>; })}</div>
       <div style={{ marginTop: 18 }}><Card><Label>Achievements</Label><div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}><Badge on label="Profile verified" /><Badge on={result.profileStrength >= 50} label="Silver reached" /><Badge on={result.profileStrength >= 70} label="Gold reached" /><Badge on={Object.keys(done).length >= 1} label="First module" /><Badge on={points >= 500} label="500 points" /><Badge on={culture != null} label={culture != null ? `Culture Shock ${culture}/100` : "Culture Shock Simulator"} /></div></Card></div>
     </>}
     {tab === "micro" && <MicroInternships />}
@@ -2569,7 +2643,7 @@ function ZuriDock({ role }) {
 // ============================================================
 // Shared Carbon shell: dark header + dark left side nav (mobile bottom nav),
 // used by both portals. Pass nav=null for onboarding/interview (no nav chrome).
-function Shell({ role, exit, nav, active, onNav, children, showZuri }) {
+function Shell({ role, exit, nav, active, onNav, children, showZuri, premiumBadge, locked }) {
   const hasNav = !!nav;
   return <div className={"fshell " + (hasNav ? "hasNav" : "noNav")}>
     <header className="fhead">
@@ -2581,11 +2655,12 @@ function Shell({ role, exit, nav, active, onNav, children, showZuri }) {
       </div>
     </header>
     {hasNav && <nav className="fside" aria-label={`${role} navigation`}>
-      {nav.map(([k, lbl]) => <button key={k} className={"fnav" + (active === k ? " on" : "")} aria-current={active === k ? "page" : undefined} onClick={() => onNav(k)}>{lbl}</button>)}
+      {premiumBadge && <div style={{ margin: "2px 14px 8px", alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 5, fontFamily: F.mono, fontSize: 10, color: "#D6B25A", border: "1px solid #6B551F", borderRadius: 5, padding: "3px 8px" }}>FIND Premium Pro</div>}
+      {nav.map(([k, lbl]) => <button key={k} className={"fnav" + (active === k ? " on" : "")} aria-current={active === k ? "page" : undefined} onClick={() => onNav(k)}>{lbl}{locked && locked.includes(k) && <span style={{ marginLeft: 6, color: "#B08A2E", display: "inline-flex", verticalAlign: "middle" }}><LockIcon size={10} /></span>}</button>)}
     </nav>}
     <main className="fmain">{children}</main>
     {hasNav && <nav className="fbot" aria-label={`${role} navigation`}>
-      {nav.map(([k, lbl]) => <button key={k} className={"fbotItem" + (active === k ? " on" : "")} aria-current={active === k ? "page" : undefined} onClick={() => onNav(k)}>{lbl}</button>)}
+      {nav.map(([k, lbl]) => <button key={k} className={"fbotItem" + (active === k ? " on" : "")} aria-current={active === k ? "page" : undefined} onClick={() => onNav(k)}>{lbl}{locked && locked.includes(k) && <span style={{ marginLeft: 4, color: "#B08A2E", display: "inline-flex", verticalAlign: "middle" }}><LockIcon size={9} /></span>}</button>)}
     </nav>}
     <footer className="ffoot">&copy; FIND Services Limited. Powered by Telos. Designed by Lexington Advisory Group.</footer>
     {showZuri && <ZuriDock role={role} />}
