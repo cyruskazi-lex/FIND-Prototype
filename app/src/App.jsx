@@ -17,9 +17,11 @@ import { LandingPage, RoleSelectionPage, AuthFormPage } from "./marketing";
 
 const T = {
   paper: "#ECEFF2", surface: "#FFFFFF", mute: "#E3E8EB", line: "#D7DEE3",
-  ink: "#0C1A26", slate: "#5E6E7A", emerald: "#066E5A", vault: "#05564A",
+  ink: "#0C1A26", slate: "#4A5C68", slateLg: "#5E6E7A", emerald: "#066E5A", vault: "#05564A",
   brass: "#B08A2E", onAccent: "#F4F7F8", alert: "#A8431F",
 };
+// slate is the AA-passing secondary text on paper for small (<16px) text.
+// slateLg keeps the softer brand tone for labels and larger (>=16px) text.
 const F = { disp: "'Hanken Grotesk', sans-serif", body: "'Inter', sans-serif", mono: "'IBM Plex Mono', monospace" };
 const FONTS = `
 @import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
@@ -62,6 +64,17 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
   .fbotItem.on{color:#fff;border-top-color:#066E5A}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media print {
+  .fhead,.fside,.fbot,.fdock,.ftoasts,.noprint{display:none!important}
+  .fshell{display:block!important;height:auto!important}
+  .fmain{overflow:visible!important;height:auto!important;padding:0!important}
+  html,body,.fshell,.fmain{background:#fff!important}
+  #cvprint{max-width:none!important}
+  #cvprint input,#cvprint textarea{border:none!important;padding:0!important;background:#fff!important;color:#0C1A26!important;font-size:13px!important}
+  .screen-only{display:none!important}
+  .print-only{display:block!important}
+}
+.print-only{display:none}
 `;
 
 // All model calls (scoring, the copilots, the Experience Alchemist) go through
@@ -142,15 +155,60 @@ function Btn({ children, onClick, kind, disabled, full, small }) {
   return <button onClick={onClick} disabled={disabled} style={{ ...s, fontFamily: F.disp, fontWeight: 600, fontSize: small ? 12.5 : 14, padding: small ? "8px 13px" : "12px 18px", borderRadius: 8, cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.5 : 1, width: full ? "100%" : "auto", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9 }}>{children}</button>;
 }
 function Spinner({ label }) { return <div style={{ display: "flex", alignItems: "center", gap: 10, color: T.slate, fontSize: 14 }}><span style={{ width: 14, height: 14, border: `2px solid ${T.line}`, borderTopColor: T.emerald, borderRadius: "50%", display: "inline-block", animation: "spin .8s linear infinite" }} />{label}</div>; }
-const Label = ({ children }) => <div style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, letterSpacing: 0.4, textTransform: "uppercase" }}>{children}</div>;
+const Label = ({ children }) => <div style={{ fontFamily: F.mono, fontSize: 11, color: T.slateLg, letterSpacing: 0.4, textTransform: "uppercase" }}>{children}</div>;
 const Eyebrow = ({ children }) => <div style={{ fontFamily: F.mono, fontSize: 12, color: T.emerald }}>{children}</div>;
 const Back = ({ onClick }) => <button onClick={onClick} aria-label="Go back" style={{ fontFamily: F.mono, fontSize: 12, color: T.slate, background: "transparent", border: "none", cursor: "pointer", padding: "4px 0", marginBottom: 8 }}>← back</button>;
+
+// Accessible modal: role=dialog, aria-modal, aria-labelledby -> titleId, focus
+// trapped while open, Escape to close, focus restored to the opener on close.
+function Modal({ titleId, onClose, children }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof document === "undefined") return;
+    const prev = document.activeElement;
+    const sel = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const focusables = () => Array.from(el.querySelectorAll(sel));
+    (focusables()[0] || el).focus?.();
+    function onKey(e) {
+      if (e.key === "Escape") { e.stopPropagation(); onClose(); return; }
+      if (e.key !== "Tab") return;
+      const f = focusables();
+      if (!f.length) { e.preventDefault(); return; }
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+    el.addEventListener("keydown", onKey);
+    return () => { el.removeEventListener("keydown", onKey); if (prev && prev.focus) prev.focus(); };
+  }, [onClose]);
+  return <div onMouseDown={onClose} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(12,26,38,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+    <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} onMouseDown={e => e.stopPropagation()}
+      style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, width: 460, maxWidth: "100%", maxHeight: "85vh", overflowY: "auto", padding: 22, boxShadow: "0 20px 50px rgba(12,26,38,0.28)" }}>
+      {children}
+    </div>
+  </div>;
+}
 const Hint = ({ show, children }) => show ? <div role="status" style={{ marginTop: 8, fontSize: 12.5, color: T.slate }}>{children}</div> : null;
 const Card = ({ children, accent, pad }) => <div style={{ background: T.surface, border: `1px solid ${accent || T.line}`, borderRadius: 12, padding: pad ?? 22 }}>{children}</div>;
 const Li = ({ children }) => <li style={{ display: "flex", gap: 9 }}><span style={{ color: T.emerald }}>.</span><span style={{ color: T.slate }}>{children}</span></li>;
 function Field({ label, value, onChange, placeholder, rows }) {
   const common = { width: "100%", marginTop: 7, background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11, fontSize: 14, lineHeight: 1.5 };
   return <div style={{ marginBottom: 14 }}><Label>{label}</Label>{rows ? <textarea rows={rows} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} style={{ ...common, resize: "vertical" }} /> : <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} style={common} />}</div>;
+}
+// Text size preference (accessibility). Stored in context at the app root and
+// applied via --base-font-size + a matching zoom on the root div, so the whole
+// inline-px-styled app scales uniformly with the chosen base.
+const FONT_SCALE = { default: 1, large: 16 / 14, larger: 18 / 14 };
+const FontSizeCtx = createContext({ size: "default", setSize: () => {} });
+const useFontSize = () => useContext(FontSizeCtx);
+function FontSizeToggle() {
+  const { size, setSize } = useFontSize();
+  const opts = [["default", "Default"], ["large", "Large"], ["larger", "Larger"]];
+  return <div role="group" aria-label="Text size" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+    {opts.map(([k, lbl]) => { const on = size === k; return <button key={k} type="button" aria-pressed={on} onClick={() => setSize(k)}
+      style={{ fontFamily: F.body, fontSize: 13, padding: "7px 14px", border: `1px solid ${on ? T.emerald : T.line}`, borderRadius: 8, background: on ? T.emerald : T.paper, color: on ? T.onAccent : T.ink, cursor: "pointer" }}>{lbl}</button>; })}
+  </div>;
 }
 const Centered = ({ children }) => <div style={{ minHeight: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>{children}</div>;
 const Scroll = ({ children }) => <div style={{ height: "100%", overflowY: "auto", padding: "26px 24px" }}>{children}</div>;
@@ -193,31 +251,28 @@ function HumanReviewProvider({ logAudit, children }) {
   }
   return <HumanReviewCtx.Provider value={request}>
     {children}
-    {open && <div role="dialog" aria-modal="true" aria-label="Request human review" onKeyDown={e => { if (e.key === "Escape") setOpen(false); }}
-      style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(12,26,38,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => setOpen(false)}>
-      <div onClick={e => e.stopPropagation()} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, width: 460, maxWidth: "100%", maxHeight: "85vh", overflowY: "auto", padding: 22, boxShadow: "0 20px 50px rgba(12,26,38,0.28)" }}>
-        {ref
-          ? <>
-            <Eyebrow>Human review</Eyebrow>
-            <h3 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 20, margin: "8px 0 6px" }}>Request received. A human will look at this.</h3>
-            <p style={{ fontSize: 14, color: T.slate, marginBottom: 14 }}>Your request is logged and queued for a human reviewer. The AI result stays as it is until a person reviews it.</p>
-            <div style={{ background: T.paper, border: `1px solid ${T.line}`, borderRadius: 8, padding: 12, fontFamily: F.mono, fontSize: 12.5, display: "grid", gap: 5 }}>
-              <div><span style={{ color: T.slate }}>reference </span><b>{ref}</b></div>
-              <div><span style={{ color: T.slate }}>expected </span>within 5 business days</div>
-            </div>
-            <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Stubbed queue in this prototype; real routing runs on the backend. Logged to your audit trail.</div>
-            <div style={{ marginTop: 16 }}><Btn onClick={() => setOpen(false)}>Done</Btn></div>
-          </>
-          : <>
-            <Eyebrow>Human review</Eyebrow>
-            <h3 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 20, margin: "8px 0 6px" }}>Ask a human to review this decision</h3>
-            <p style={{ fontSize: 13.5, color: T.slate, marginBottom: 12 }}>Your AI result stays as it is. This adds a human review alongside it.</p>
-            <Field label="What decision are you questioning?" value={decision} onChange={setDecision} />
-            <Field label="Why?" rows={4} value={reason} onChange={setReason} placeholder="In your own words." />
-            <div style={{ display: "flex", gap: 10, marginTop: 4 }}><Btn disabled={!reason.trim()} onClick={submit}>Submit request</Btn><Btn kind="ghost" onClick={() => setOpen(false)}>Cancel</Btn></div>
-          </>}
-      </div>
-    </div>}
+    {open && <Modal titleId="hr-title" onClose={() => setOpen(false)}>
+      {ref
+        ? <>
+          <Eyebrow>Human review</Eyebrow>
+          <h3 id="hr-title" style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 20, margin: "8px 0 6px" }}>Request received. A human will look at this.</h3>
+          <p style={{ fontSize: 14, color: T.slate, marginBottom: 14 }}>Your request is logged and queued for a human reviewer. The AI result stays as it is until a person reviews it.</p>
+          <div style={{ background: T.paper, border: `1px solid ${T.line}`, borderRadius: 8, padding: 12, fontFamily: F.mono, fontSize: 12.5, display: "grid", gap: 5 }}>
+            <div><span style={{ color: T.slate }}>reference </span><b>{ref}</b></div>
+            <div><span style={{ color: T.slate }}>expected </span>within 5 business days</div>
+          </div>
+          <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Stubbed queue in this prototype; real routing runs on the backend. Logged to your audit trail.</div>
+          <div style={{ marginTop: 16 }}><Btn onClick={() => setOpen(false)}>Done</Btn></div>
+        </>
+        : <>
+          <Eyebrow>Human review</Eyebrow>
+          <h3 id="hr-title" style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 20, margin: "8px 0 6px" }}>Ask a human to review this decision</h3>
+          <p style={{ fontSize: 13.5, color: T.slate, marginBottom: 12 }}>Your AI result stays as it is. This adds a human review alongside it.</p>
+          <Field label="What decision are you questioning?" value={decision} onChange={setDecision} />
+          <Field label="Why?" rows={4} value={reason} onChange={setReason} placeholder="In your own words." />
+          <div style={{ display: "flex", gap: 10, marginTop: 4 }}><Btn disabled={!reason.trim()} onClick={submit}>Submit request</Btn><Btn kind="ghost" onClick={() => setOpen(false)}>Cancel</Btn></div>
+        </>}
+    </Modal>}
   </HumanReviewCtx.Provider>;
 }
 
@@ -501,8 +556,8 @@ function AuditTrail({ audit, onBack }) {
     <p style={{ color: T.slate, fontSize: 15, marginBottom: 18 }}>A record of what has happened to your profile: assessments, scores, reviews you requested, and data actions. Most recent first.</p>
     {events.length === 0
       ? <Card><p style={{ color: T.slate, fontSize: 14 }}>No events yet. Complete your assessment and your audit trail begins here.</p></Card>
-      : <div style={{ display: "grid", gap: 1, background: T.line, border: `1px solid ${T.line}`, borderRadius: 8, overflow: "hidden" }}>
-        {events.map((e, i) => { const v = (AUDIT_VIEW[e.kind] || (() => ({ label: e.kind, desc: "" })))(e); return <div key={i} style={{ background: T.surface, padding: "13px 15px" }}>
+      : <div role="list" style={{ display: "grid", gap: 1, background: T.line, border: `1px solid ${T.line}`, borderRadius: 8, overflow: "hidden" }}>
+        {events.map((e, i) => { const v = (AUDIT_VIEW[e.kind] || (() => ({ label: e.kind, desc: "" })))(e); return <div key={i} role="listitem" style={{ background: T.surface, padding: "13px 15px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "baseline" }}>
             <span style={{ fontWeight: 600, fontSize: 14 }}>{v.label}</span>
             <span style={{ fontFamily: F.mono, fontSize: 11, color: T.slate }}>{new Date(e.at).toLocaleString()}</span>
@@ -582,6 +637,7 @@ function EthicsPage({ onBack }) {
         <Li>Zuri, an AI interviewer, asks a few questions that adapt to your answers.</Li>
         <Li>An AI model reads your experience and your answers, then scores six dimensions from 0 to 100, each with a written reason you can see.</Li>
         <Li>Your Profile Strength is a weighted average of those scores, computed by a fixed formula.</Li>
+        <Li>Telos, the engine underneath, uses a graph-based reasoning model to relate your evidence across the dimensions.</Li>
         <Li>A score is a starting point, not a verdict. You can retake the interview, contest a score, or ask for a human.</Li>
       </ul>
     </Section>
@@ -728,6 +784,12 @@ function Settings({ builders, onFairness, onAudit, onReport, onEthics, logAudit 
     </Card>
     <div style={{ height: 14 }} />
 
+    <Card><Label>Text size</Label>
+      <p style={{ fontSize: 13.5, color: T.slate, margin: "8px 0 10px" }}>Scale the whole app for easier reading.</p>
+      <FontSizeToggle />
+    </Card>
+    <div style={{ height: 14 }} />
+
     <Card><Label>Notification channels</Label>
       <div style={{ marginTop: 6 }}>{CHANNELS.map(ch => <div key={ch.id} style={row}>
         <span style={{ fontSize: 14 }}>{ch.name}</span>
@@ -799,7 +861,7 @@ const CAND_NAV = [
 // A first-class screen: reshapes the builder's raw, plainly-written experience
 // into recruiter-ready outcomes grounded only in what they wrote, with save and
 // copy. Routes through /api/claude; inert (clear waiting state) until a provider.
-function ExperienceAlchemist({ profile }) {
+function ExperienceAlchemist({ profile, onBuildCV }) {
   const toast = useToast();
   const [raw, setRaw] = useState(profile.experience || "");
   const [busy, setBusy] = useState(false);
@@ -829,7 +891,8 @@ function ExperienceAlchemist({ profile }) {
   return <Scroll><div style={{ maxWidth: 760, margin: "0 auto" }} className="rise">
     <Eyebrow>Experience Alchemist</Eyebrow>
     <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 4px" }}>Turn your experience into recruiter-ready outcomes</h2>
-    <p style={{ color: T.slate, fontSize: 15, marginBottom: 18 }}>Write plainly. Zuri reshapes it into a role, headline, outcomes, and skills, grounded only in what you wrote. Nothing invented.</p>
+    <p style={{ color: T.slate, fontSize: 15, marginBottom: 12 }}>Write plainly. Zuri reshapes it into a role, headline, outcomes, and skills, grounded only in what you wrote. Nothing invented.</p>
+    <div style={{ marginBottom: 18 }}><button onClick={onBuildCV} style={{ background: "none", border: "none", color: T.emerald, cursor: "pointer", padding: 0, fontSize: 13.5, textDecoration: "underline", fontFamily: F.body }}>I don't have a CV yet, build one with Zuri</button></div>
     <Card>
       <Field label="Your experience, in your words" rows={7} value={raw} onChange={setRaw} placeholder="What have you built, what did you handle, what went wrong and how did you fix it." />
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 4 }}>{busy ? <Spinner label="Zuri is reshaping your experience..." /> : <Btn disabled={!ready} onClick={run}>Run the Alchemist</Btn>}<Hint show={!ready && !busy}>Add a few sentences of experience to continue.</Hint></div>
@@ -856,6 +919,175 @@ function ExperienceAlchemist({ profile }) {
       <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Saved locally in this prototype. Real persistence is a backend step.</div>
       <ZuriNote />
     </Card></div>}
+    <div style={{ height: 30 }} />
+  </div></Scroll>;
+}
+
+// ---- CV Builder (candidate). NEEDS MODEL ----
+// Secondary path from the Experience Alchemist for candidates with no CV. An
+// adaptive Zuri extraction interview (routed through /api/claude, inert-aware),
+// then a structured CV drawn only from what the candidate said, editable inline.
+const cvNormalize = c => ({
+  personal_statement: c.personal_statement || "",
+  skills: c.skills || [],
+  experience: (c.experience || []).map(e => ({ role: e.role || "", organisation: e.organisation || "", period: e.period || "", outcomes: e.outcomes || [] })),
+  education: c.education || [], tools: c.tools || [], languages: c.languages || [],
+  integrity_note: c.integrity_note || "",
+});
+function cvToText(cv, name) {
+  const L = [name || "Your name"];
+  if (cv.personal_statement) L.push("", cv.personal_statement);
+  const sec = (t, arr) => { if (arr && arr.length) { L.push("", t.toUpperCase()); arr.forEach(x => L.push("- " + x)); } };
+  sec("Skills", cv.skills);
+  if (cv.experience && cv.experience.length) { L.push("", "EXPERIENCE"); cv.experience.forEach(e => { L.push([e.role, e.organisation].filter(Boolean).join(", ") + (e.period ? ` (${e.period})` : "")); (e.outcomes || []).forEach(o => L.push("  - " + o)); }); }
+  sec("Education", cv.education); sec("Tools and technologies", cv.tools); sec("Languages", cv.languages);
+  if (cv.integrity_note) L.push("", cv.integrity_note);
+  return L.join("\n");
+}
+function EditList({ items, onChange, placeholder }) {
+  const inp = { flex: 1, background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 6, padding: "7px 9px", fontSize: 13.5 };
+  return <div style={{ display: "grid", gap: 6 }}>
+    {(items || []).map((it, i) => <div key={i} style={{ display: "flex", gap: 6 }}>
+      <input value={it} placeholder={placeholder} onChange={e => onChange(items.map((x, j) => j === i ? e.target.value : x))} style={inp} />
+      <button className="noprint" onClick={() => onChange(items.filter((_, j) => j !== i))} aria-label="Remove" style={{ background: "none", border: `1px solid ${T.line}`, borderRadius: 6, color: T.slate, cursor: "pointer", padding: "0 10px" }}>×</button>
+    </div>)}
+    <button className="noprint" onClick={() => onChange([...(items || []), ""])} style={{ background: "none", border: "none", color: T.emerald, fontFamily: F.mono, fontSize: 11.5, cursor: "pointer", textAlign: "left", padding: 0, textDecoration: "underline" }}>+ add</button>
+  </div>;
+}
+
+function CVBuilder({ profile, saveCV, onBack }) {
+  const toast = useToast();
+  const voice = useZuriVoice();
+  const [phase, setPhase] = useState("ready"); // ready | interview | building | review
+  const [qa, setQa] = useState([]);
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [asking, setAsking] = useState(false);
+  const [err, setErr] = useState("");
+  const [cv, setCv] = useState(null);
+  const [saved, setSaved] = useState(false);
+  const MINQ = 5, MAXQ = 8;
+  const clips = [INTERVIEW_INTRO.video, ...INTERVIEW_SCRIPT.map(q => q.video)];
+  const clip = clips[Math.min(qa.length, clips.length - 1)];
+  const ta = { width: "100%", background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11, fontSize: 14, resize: "vertical" };
+  const inp = { width: "100%", background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 6, padding: "7px 9px", fontSize: 13.5 };
+  const up = patch => setCv(c => ({ ...c, ...patch }));
+
+  async function nextQuestion(transcript) {
+    setAsking(true); setErr("");
+    try {
+      const sys = "You are Zuri, running a warm, patient interview to build a CV from what the candidate tells you. Ask ONE question at a time. Over five to eight questions, gather: education, work history including informal and self-taught work, tools and technologies, languages, and any impact or recognition. Adapt: if an answer is vague or thin, ask a gentle follow-up before moving on. Extract only what they tell you; never invent or infer. Warm in manner, patient in pace, plain language, no em dashes. Return ONLY JSON, no fences: {\"question\":string,\"done\":boolean}. Set done to true once you have enough across those topics and have asked at least five questions.";
+      const user = transcript.length
+        ? "So far:\n" + transcript.map((x, i) => `Q${i + 1}: ${x.q}\nA${i + 1}: ${x.a}`).join("\n\n") + `\n\nAsked ${transcript.length}. Give the next question, or set done.`
+        : "Begin with a warm opening question that invites them to share their background.";
+      const out = await callClaude({ system: sys, messages: [{ role: "user", content: user }], expectJson: true });
+      if ((out.done && transcript.length >= MINQ) || transcript.length >= MAXQ) { build(transcript); return; }
+      const q = out.question || "Tell me a little more about your background.";
+      setQuestion(q); setAsking(false); voice.speak(q);
+    } catch (e) { setErr(String(e).includes("501") ? "config" : "fail"); setAsking(false); }
+  }
+  function start() { setPhase("interview"); setQa([]); setQuestion(""); setErr(""); nextQuestion([]); }
+  function submit() {
+    if (answer.trim().length < 2) return;
+    const next = [...qa, { q: question, a: answer.trim() }];
+    setQa(next); setAnswer("");
+    if (next.length >= MAXQ) { build(next); return; }
+    nextQuestion(next);
+  }
+  async function build(transcript) {
+    setPhase("building"); setErr("");
+    try {
+      const sys = "You are Zuri, building a CV strictly from the candidate's own words in this interview. Extract only what they said. Never invent, infer, or embellish. If something was not mentioned, leave that array empty. Warm, honest, plain, no em dashes. Return ONLY JSON, no fences: {\"personal_statement\":string,\"skills\":[string],\"experience\":[{\"role\":string,\"organisation\":string,\"period\":string,\"outcomes\":[string]}],\"education\":[string],\"tools\":[string],\"languages\":[string],\"integrity_note\":string}. The integrity_note must confirm in one plain sentence that every line was drawn only from what the candidate said and nothing was invented.";
+      const t = transcript.map((x, i) => `Q${i + 1}: ${x.q}\nA${i + 1}: ${x.a}`).join("\n\n");
+      const out = await callClaude({ system: sys, messages: [{ role: "user", content: `Anything the candidate wrote earlier (may be empty):\n${profile.experience || "(none)"}\n\nInterview:\n${t}` }], expectJson: true });
+      setCv(cvNormalize(out)); setPhase("review");
+    } catch (e) { setErr(String(e).includes("501") ? "config" : "fail"); }
+  }
+  function copy() {
+    try { navigator.clipboard.writeText(cvToText(cv, profile.name)); toast("CV copied to clipboard."); }
+    catch { toast("Copy is not available in this browser."); }
+  }
+  function saveIt() { setSaved(true); if (saveCV) saveCV(cv); toast("CV saved to your profile. Real persistence is a backend step."); }
+
+  const Section = ({ title, children }) => <section style={{ marginTop: 18 }}><Label>{title}</Label><div style={{ marginTop: 8 }}>{children}</div></section>;
+
+  return <Scroll><div style={{ maxWidth: 760, margin: "0 auto" }} className="rise">
+    <div className="noprint"><Back onClick={onBack} /></div>
+    <div className="noprint">
+      <Eyebrow>CV Builder</Eyebrow>
+      <h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "8px 0 4px" }}>Build a CV with Zuri</h2>
+      <p style={{ color: T.slate, fontSize: 15, marginBottom: 18 }}>No CV yet? Zuri asks a few questions and turns your answers into a clean CV, drawn only from what you say. Nothing invented.</p>
+    </div>
+
+    {phase === "ready" && <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18, textAlign: "center" }}>
+      <p style={{ color: T.slate, fontSize: 14, maxWidth: 470 }}>Zuri will ask five to eight short questions about your education, work (formal and informal), tools, languages, and any recognition. Answer in your own words; she works only from what you say.</p>
+      <Btn onClick={start}>Start the CV interview</Btn>
+    </div>}
+
+    {phase === "interview" && <div style={{ display: "grid", gap: 14, justifyItems: "center" }}>
+      <div style={{ fontFamily: F.mono, fontSize: 11, color: T.slate }}>question {qa.length + 1} of about {MINQ} to {MAXQ}</div>
+      <VideoStage key={clip} src={clip} autoPlay muted playing={voice.speaking} onPlay={() => {}} onStop={() => {}} />
+      {asking
+        ? <Spinner label="Zuri is thinking of the next question..." />
+        : err === "config"
+          ? <Card accent={T.brass}><Label>Zuri is ready, waiting on a provider</Label><p style={{ fontSize: 14, color: T.slate, marginTop: 8 }}>The CV interview is built and wired through the model proxy. It lights up the moment a model provider is connected.</p></Card>
+          : err === "fail"
+            ? <div style={{ color: T.alert, fontSize: 14, display: "flex", gap: 12, alignItems: "center" }}>Zuri did not respond. <Btn kind="ghost" small onClick={() => nextQuestion(qa)}>Try again</Btn></div>
+            : <>
+              {question && <div style={{ maxWidth: 520, textAlign: "center", fontSize: 15 }}><b style={{ color: T.emerald, fontFamily: F.mono, fontSize: 12 }}>ZURI</b> . {question}</div>}
+              <div style={{ width: "100%", maxWidth: 560 }}>
+                <textarea rows={3} value={answer} onChange={e => setAnswer(e.target.value)} placeholder="Answer in your own words." style={ta} />
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}><Btn small disabled={answer.trim().length < 2} onClick={submit}>Send answer</Btn></div>
+              </div>
+              {qa.length > 0 && <div style={{ width: "100%", maxWidth: 560, display: "grid", gap: 8 }}>{qa.map((x, i) => <div key={i} style={{ fontSize: 13.5, color: T.slate }}><b style={{ color: T.emerald, fontFamily: F.mono, fontSize: 11 }}>Q{i + 1}</b> {x.a}</div>)}</div>}
+            </>}
+    </div>}
+
+    {phase === "building" && <div style={{ display: "flex", justifyContent: "center" }}>
+      {err === "config"
+        ? <Card accent={T.brass}><Label>Zuri is ready, waiting on a provider</Label><p style={{ fontSize: 14, color: T.slate, marginTop: 8 }}>The CV writer is wired through the model proxy. It lights up the moment a model provider is connected.</p></Card>
+        : err === "fail"
+          ? <div style={{ color: T.alert, fontSize: 14, display: "flex", gap: 12, alignItems: "center" }}>Zuri could not write the CV. <Btn kind="ghost" small onClick={() => build(qa)}>Try again</Btn></div>
+          : <Card><Spinner label="Zuri is writing your CV from your answers..." /></Card>}
+    </div>}
+
+    {phase === "review" && cv && <div>
+      <div id="cvprint" style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 24 }}>
+        <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 24 }}>{profile.name || "Your name"}</div>
+        {profile.role && <div style={{ color: T.slate, fontSize: 14, marginTop: 2 }}>{profile.role}</div>}
+        <Section title="Personal statement">
+          <textarea className="screen-only" rows={3} value={cv.personal_statement} onChange={e => up({ personal_statement: e.target.value })} style={ta} />
+          <p className="print-only" style={{ fontSize: 13.5, lineHeight: 1.6 }}>{cv.personal_statement}</p>
+        </Section>
+        <Section title="Skills"><EditList items={cv.skills} onChange={v => up({ skills: v })} placeholder="A skill" /></Section>
+        <Section title="Experience">
+          <div style={{ display: "grid", gap: 12 }}>
+            {cv.experience.map((e, i) => <div key={i} style={{ border: `1px solid ${T.line}`, borderRadius: 8, padding: 12 }}>
+              <div style={{ display: "grid", gap: 6 }}>
+                <input value={e.role} placeholder="Role" onChange={ev => up({ experience: cv.experience.map((x, j) => j === i ? { ...x, role: ev.target.value } : x) })} style={inp} />
+                <input value={e.organisation} placeholder="Organisation" onChange={ev => up({ experience: cv.experience.map((x, j) => j === i ? { ...x, organisation: ev.target.value } : x) })} style={inp} />
+                <input value={e.period} placeholder="Period" onChange={ev => up({ experience: cv.experience.map((x, j) => j === i ? { ...x, period: ev.target.value } : x) })} style={inp} />
+              </div>
+              <div style={{ marginTop: 8 }}><div style={{ fontFamily: F.mono, fontSize: 10.5, color: T.slate, marginBottom: 4 }}>OUTCOMES</div><EditList items={e.outcomes} onChange={v => up({ experience: cv.experience.map((x, j) => j === i ? { ...x, outcomes: v } : x) })} placeholder="What you achieved" /></div>
+              <button className="noprint" onClick={() => up({ experience: cv.experience.filter((_, j) => j !== i) })} style={{ marginTop: 8, background: "none", border: "none", color: T.slate, fontFamily: F.mono, fontSize: 11, cursor: "pointer", padding: 0, textDecoration: "underline" }}>remove role</button>
+            </div>)}
+            <button className="noprint" onClick={() => up({ experience: [...cv.experience, { role: "", organisation: "", period: "", outcomes: [] }] })} style={{ background: "none", border: "none", color: T.emerald, fontFamily: F.mono, fontSize: 11.5, cursor: "pointer", textAlign: "left", padding: 0, textDecoration: "underline" }}>+ add role</button>
+          </div>
+        </Section>
+        <Section title="Education"><EditList items={cv.education} onChange={v => up({ education: v })} placeholder="A qualification or course" /></Section>
+        <Section title="Tools and technologies"><EditList items={cv.tools} onChange={v => up({ tools: v })} placeholder="A tool" /></Section>
+        <Section title="Languages"><EditList items={cv.languages} onChange={v => up({ languages: v })} placeholder="A language" /></Section>
+        {cv.integrity_note && <div style={{ marginTop: 18, fontFamily: F.mono, fontSize: 11, color: T.slate, borderTop: `1px solid ${T.mute}`, paddingTop: 10 }}>{cv.integrity_note}</div>}
+      </div>
+      <div className="noprint" style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Btn small disabled={saved} onClick={saveIt}>{saved ? "Saved" : "Save to profile"}</Btn>
+        <Btn kind="ghost" small onClick={copy}>Copy as text</Btn>
+        <Btn kind="ghost" small onClick={() => window.print()}>Download PDF</Btn>
+        <Btn kind="ghost" small onClick={() => { setPhase("ready"); setCv(null); setQa([]); setSaved(false); }}>Start over</Btn>
+      </div>
+      <div className="noprint" style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Copy uses your clipboard. PDF uses your browser's print to PDF; a real PDF service is a backend step. Saved locally in this prototype; real persistence is a backend step.</div>
+      <div className="noprint"><ZuriNote /></div>
+    </div>}
     <div style={{ height: 30 }} />
   </div></Scroll>;
 }
@@ -1007,7 +1239,7 @@ function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leave
   const [points, setPoints] = useState(0);
   const [published, setPublished] = useState(false);
   const toast = useToast();
-  const inApp = CAND_NAV.some(([k]) => k === screen) || ["fairness", "audit", "report", "ethics"].includes(screen);
+  const inApp = CAND_NAV.some(([k]) => k === screen) || ["fairness", "audit", "report", "ethics", "cvbuilder"].includes(screen);
 
   function finish(r) {
     setResult(r); setPoints(120);
@@ -1035,7 +1267,8 @@ function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leave
     {screen === "coach" && <NegotiationCoach profile={profile} builders={builders} pipeline={pipeline} />}
     {screen === "worth" && <GlobalWorth profile={profile} builders={builders} pipeline={pipeline} />}
     {screen === "community" && <Community builders={builders} pipeline={pipeline} squads={squads} onJoin={joinSquad} onLeave={leaveSquad} onForm={formSquad} />}
-    {screen === "alchemist" && <ExperienceAlchemist profile={profile} />}
+    {screen === "alchemist" && <ExperienceAlchemist profile={profile} onBuildCV={() => setScreen("cvbuilder")} />}
+    {screen === "cvbuilder" && <CVBuilder profile={profile} saveCV={cv => setProfile(p => ({ ...p, cv }))} onBack={() => setScreen("alchemist")} />}
     {screen === "settings" && <Settings builders={builders} onFairness={() => setScreen("fairness")} onAudit={() => setScreen("audit")} onReport={() => setScreen("report")} onEthics={() => setScreen("ethics")} logAudit={logAudit} />}
     {screen === "fairness" && <FairnessPosture onBack={() => setScreen("settings")} />}
     {screen === "audit" && <AuditTrail audit={audit} onBack={() => setScreen("settings")} />}
@@ -1178,14 +1411,15 @@ function AssessInfo({ onOptIn, onOptOut, onBack, accommodations, setAccommodatio
       <Li>Zuri, an AI interviewer, asks questions that adapt to your answers.</Li>
       <Li>An AI model reads your experience and answers, then scores each dimension 0 to 100 with a written reason you will see.</Li>
       <Li>Your Profile Strength is a weighted average computed by the fixed formula above.</Li>
+      <Li>Telos, the engine underneath, uses a graph-based reasoning model to relate your evidence across the dimensions.</Li>
       <Li>Scores are a starting point, not a verdict. You can retake the interview.</Li>
     </ul></Card>
     <div style={{ height: 14 }} />
     <Card><Label>Accommodations</Label>
       <p style={{ fontSize: 13.5, color: T.slate, margin: "8px 0 12px" }}>Choose any that help you show your real ability. Select as many as you need.</p>
       <div style={{ display: "grid", gap: 11 }}>
-        {ACCOMMODATIONS.map(a => <label key={a.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
-          <input type="checkbox" checked={!!accommodations[a.id]} onChange={e => setAccommodations(s => ({ ...s, [a.id]: e.target.checked }))} style={{ marginTop: 3 }} />
+        {ACCOMMODATIONS.map(a => <label key={a.id} htmlFor={`acc-${a.id}`} style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
+          <input id={`acc-${a.id}`} type="checkbox" checked={!!accommodations[a.id]} onChange={e => setAccommodations(s => ({ ...s, [a.id]: e.target.checked }))} style={{ marginTop: 3 }} />
           <span><span style={{ fontWeight: 600, fontSize: 14 }}>{a.label}</span><div style={{ color: T.slate, fontSize: 13 }}>{a.desc}</div></span>
         </label>)}
       </div>
@@ -1282,11 +1516,11 @@ const INTERVIEW_SCRIPT = [
 // Zuri on camera, with a soft pulsing ring around the frame while the clip
 // plays (the speaking cue at Level 1 — no lip-sync). A click precedes every
 // clip, so autoplay with audio is allowed; controls cover any blocked autoplay.
-function VideoStage({ src, autoPlay, playing, onPlay, onStop }) {
+function VideoStage({ src, autoPlay, playing, onPlay, onStop, muted }) {
   const ref = useRef(null);
   useEffect(() => { if (autoPlay && ref.current) ref.current.play?.().catch(() => {}); }, [autoPlay, src]);
   return <div style={{ position: "relative", width: "100%", maxWidth: 420 }}>
-    <video ref={ref} src={src} playsInline controls preload="metadata" aria-label="Zuri speaking"
+    <video ref={ref} src={src} playsInline controls={!muted} muted={muted} preload="metadata" aria-label="Zuri speaking"
       onPlay={onPlay} onPlaying={onPlay} onEnded={onStop} onPause={onStop}
       style={{ width: "100%", borderRadius: 16, display: "block", background: T.ink, border: `1px solid ${T.line}` }} />
     {playing && <span aria-hidden="true" style={{ position: "absolute", inset: -3, borderRadius: 18, pointerEvents: "none", animation: "zuriPulse 1.6s ease-in-out infinite" }} />}
@@ -1440,32 +1674,30 @@ function Dashboard({ profile, result, onUpskill, published, audit, logAudit }) {
         <Card accent={zuri ? T.emerald : T.line}><Label>Zuri . career copilot</Label>{!zuri && !zb && <div style={{ marginTop: 10 }}><Btn kind="ghost" small onClick={askZuri}>Ask Zuri what to do next</Btn></div>}{zb && <div style={{ marginTop: 12 }}><Spinner label="Zuri is thinking..." /></div>}{zuri && <p style={{ marginTop: 10, fontSize: 14, lineHeight: 1.6 }}>{zuri}</p>}</Card>
       </div>
     </div>
-    {contestOpen && <div role="dialog" aria-modal="true" aria-label="Contest a score" onClick={() => setContestOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(12,26,38,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, width: 460, maxWidth: "100%", maxHeight: "85vh", overflowY: "auto", padding: 22, boxShadow: "0 20px 50px rgba(12,26,38,0.28)" }}>
-        {cRef
-          ? <>
-            <Eyebrow>Contest a score</Eyebrow>
-            <h3 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 20, margin: "8px 0 6px" }}>Contest received. A human will look at this.</h3>
-            <p style={{ fontSize: 14, color: T.slate, marginBottom: 14 }}>Your contest of your {cDim} score is logged and queued for a human reviewer. The score stays as it is, marked under review, until a person resolves it.</p>
-            <div style={{ background: T.paper, border: `1px solid ${T.line}`, borderRadius: 8, padding: 12, fontFamily: F.mono, fontSize: 12.5, display: "grid", gap: 5 }}>
-              <div><span style={{ color: T.slate }}>reference </span><b>{cRef}</b></div>
-              <div><span style={{ color: T.slate }}>expected </span>within 5 business days</div>
-            </div>
-            <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Stubbed queue in this prototype; real routing runs on the backend. Logged to your audit trail.</div>
-            <div style={{ marginTop: 16 }}><Btn onClick={() => setContestOpen(false)}>Done</Btn></div>
-          </>
-          : <>
-            <Eyebrow>Contest a score</Eyebrow>
-            <h3 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 20, margin: "8px 0 6px" }}>Contest a specific dimension</h3>
-            <p style={{ fontSize: 13.5, color: T.slate, marginBottom: 14 }}>Contest is about one score dimension. For anything broader, use request human review instead.</p>
-            <label style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, textTransform: "uppercase", letterSpacing: 0.3 }}>Which dimension?</label>
-            <select value={cDim} onChange={e => setCDim(e.target.value)} style={{ width: "100%", background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11, fontSize: 14, margin: "6px 0 14px" }}>{result.dimensions.map((d, i) => <option key={i} value={d.name}>{d.name} ({d.score}/100)</option>)}</select>
-            <Field label="Why are you contesting this?" value={cWhy} onChange={setCWhy} rows={3} placeholder="In your own words." />
-            <Field label="Extra context (optional)" value={cCtx} onChange={setCCtx} rows={2} placeholder="Anything a reviewer should know." />
-            <div style={{ display: "flex", gap: 10, marginTop: 4 }}><Btn disabled={!cWhy.trim()} onClick={submitContest}>Submit contest</Btn><Btn kind="ghost" onClick={() => setContestOpen(false)}>Cancel</Btn></div>
-          </>}
-      </div>
-    </div>}
+    {contestOpen && <Modal titleId="contest-title" onClose={() => setContestOpen(false)}>
+      {cRef
+        ? <>
+          <Eyebrow>Contest a score</Eyebrow>
+          <h3 id="contest-title" style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 20, margin: "8px 0 6px" }}>Contest received. A human will look at this.</h3>
+          <p style={{ fontSize: 14, color: T.slate, marginBottom: 14 }}>Your contest of your {cDim} score is logged and queued for a human reviewer. The score stays as it is, marked under review, until a person resolves it.</p>
+          <div style={{ background: T.paper, border: `1px solid ${T.line}`, borderRadius: 8, padding: 12, fontFamily: F.mono, fontSize: 12.5, display: "grid", gap: 5 }}>
+            <div><span style={{ color: T.slate }}>reference </span><b>{cRef}</b></div>
+            <div><span style={{ color: T.slate }}>expected </span>within 5 business days</div>
+          </div>
+          <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Stubbed queue in this prototype; real routing runs on the backend. Logged to your audit trail.</div>
+          <div style={{ marginTop: 16 }}><Btn onClick={() => setContestOpen(false)}>Done</Btn></div>
+        </>
+        : <>
+          <Eyebrow>Contest a score</Eyebrow>
+          <h3 id="contest-title" style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 20, margin: "8px 0 6px" }}>Contest a specific dimension</h3>
+          <p style={{ fontSize: 13.5, color: T.slate, marginBottom: 14 }}>Contest is about one score dimension. For anything broader, use request human review instead.</p>
+          <label htmlFor="contest-dim" style={{ fontFamily: F.mono, fontSize: 11, color: T.slateLg, textTransform: "uppercase", letterSpacing: 0.3 }}>Which dimension?</label>
+          <select id="contest-dim" value={cDim} onChange={e => setCDim(e.target.value)} style={{ width: "100%", background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11, fontSize: 14, margin: "6px 0 14px" }}>{result.dimensions.map((d, i) => <option key={i} value={d.name}>{d.name} ({d.score}/100)</option>)}</select>
+          <Field label="Why are you contesting this?" value={cWhy} onChange={setCWhy} rows={3} placeholder="In your own words." />
+          <Field label="Extra context (optional)" value={cCtx} onChange={setCCtx} rows={2} placeholder="Anything a reviewer should know." />
+          <div style={{ display: "flex", gap: 10, marginTop: 4 }}><Btn disabled={!cWhy.trim()} onClick={submitContest}>Submit contest</Btn><Btn kind="ghost" onClick={() => setContestOpen(false)}>Cancel</Btn></div>
+        </>}
+    </Modal>}
     <div style={{ height: 30 }} />
   </div></Scroll>;
 }
@@ -1508,7 +1740,7 @@ function EmpWelcome({ onNext, onBack }) {
     {onBack && <Back onClick={onBack} />}
     <Eyebrow>For employers</Eyebrow>
     <h1 style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 34, letterSpacing: 0.3, lineHeight: 1.12, margin: "8px 0 10px" }}>Hire verified African talent with the risk carried for you</h1>
-    <p style={{ color: T.slate, fontSize: 16, maxWidth: 520, marginBottom: 26 }}>Search by evidence, not keywords, with identity shielded until you commit.</p>
+    <p style={{ color: T.slateLg, fontSize: 16, maxWidth: 520, marginBottom: 26 }}>Search by evidence, not keywords, with identity shielded until you commit.</p>
     <Btn onClick={onNext}>Get started</Btn>
   </div></Centered>;
 }
@@ -1682,6 +1914,11 @@ function Account({ company, setCompany }) {
     </Card>
     <div style={{ marginTop: 16 }}><Btn disabled={!dirty} onClick={() => { setCompany(draft); toast("Account saved. Persistence is a backend step."); }}>Save changes</Btn></div>
     <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Company profile, billing, and verification run on the backend.</div>
+    <div style={{ height: 14 }} />
+    <Card><Label>Text size</Label>
+      <p style={{ fontSize: 13.5, color: T.slate, margin: "8px 0 10px" }}>Scale the whole app for easier reading.</p>
+      <FontSizeToggle />
+    </Card>
     <div style={{ height: 30 }} />
   </div></Scroll>;
 }
@@ -2015,7 +2252,7 @@ function Finance({ pipeline }) {
 // there. The Zuri component namespaces its ids per instance, so contexts never
 // collide.
 // ============================================================
-const NO_DOCK_SCREENS = ["signin", "consent", "onboarding", "assessinfo", "humanreview", "interview"];
+const NO_DOCK_SCREENS = ["signin", "consent", "onboarding", "assessinfo", "humanreview", "interview", "cvbuilder"];
 
 // Zuri's real photo (resting) in a circular frame — the copilot's avatar since
 // the SVG avatar was retired. Static: resting only.
@@ -2066,7 +2303,7 @@ function ZuriDock({ role }) {
         <div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 15 }}>Zuri</div>
         <div style={{ fontFamily: F.mono, fontSize: 10.5, color: T.slate }}>career copilot</div>
       </div>
-      <button onClick={() => setOpen(false)} aria-label="Close Zuri copilot" style={{ background: "transparent", border: "none", cursor: "pointer", color: T.slate, fontSize: 20, lineHeight: 1, padding: 4 }}>×</button>
+      <button onClick={() => setOpen(false)} aria-label="Close Zuri copilot" style={{ background: "transparent", border: "none", cursor: "pointer", color: T.slateLg, fontSize: 20, lineHeight: 1, padding: 4 }}>×</button>
     </div>
     <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: 14, display: "grid", gap: 10, alignContent: "start" }}>
       {msgs.map((m, i) => <div key={i} style={{ justifySelf: m.from === "you" ? "end" : "start", maxWidth: "85%", background: m.from === "you" ? T.paper : "rgba(6,110,90,0.06)", border: `1px solid ${m.from === "you" ? T.line : "rgba(6,110,90,0.25)"}`, borderRadius: 10, padding: "8px 11px", fontSize: 13.5, lineHeight: 1.55 }}>{m.text}</div>)}
@@ -2121,18 +2358,22 @@ export default function App() {
   const leaveSquad = id => setSquads(s => s.map(x => x.id === id ? { ...x, joined: false, members: Math.max(0, x.members - 1) } : x));
   const formSquad = ({ name, focus, pitch }) => setSquads(s => [{ id: "sq-" + Math.random().toString(36).slice(2, 8), name, focus, pitch, members: 1, joined: true }, ...s]);
   const toRole = () => setView("role");
+  const [fontSize, setFontSize] = useState("default");
+  const scale = FONT_SCALE[fontSize] || 1;
   // The marketing views (landing, role selection) are Tailwind-styled and use
   // IBM Plex Sans as their base font, separate from the inline-styled app shell.
   const marketingFont = { fontFamily: "'IBM Plex Sans', sans-serif" };
-  return <div style={{ background: T.paper, minHeight: "100vh", color: T.ink, fontFamily: F.body }}>
+  return <div style={{ background: T.paper, minHeight: "100vh", color: T.ink, fontFamily: F.body, zoom: scale, "--base-font-size": `${(14 * scale).toFixed(1)}px` }}>
     <style>{FONTS}</style>
-    <ToastProvider>
-      <HumanReviewProvider logAudit={logAudit}>
-        {view === "landing" && <div style={marketingFont}><LandingPage onSignInClick={toRole} /></div>}
-        {view === "role" && <div style={marketingFont}><RoleSelectionPage onRoleSelect={r => setView(r === "builder" ? "candidate" : "employer")} onBack={() => setView("landing")} /></div>}
-        {view === "candidate" && <CandidateApp addBuilder={addBuilder} builders={builders} pipeline={pipeline} squads={squads} joinSquad={joinSquad} leaveSquad={leaveSquad} formSquad={formSquad} audit={audit} logAudit={logAudit} exit={() => setView("landing")} toRole={toRole} />}
-        {view === "employer" && <EmployerApp builders={builders} pipeline={pipeline} setPipeline={setPipeline} logAudit={logAudit} exit={() => setView("landing")} toRole={toRole} />}
-      </HumanReviewProvider>
-    </ToastProvider>
+    <FontSizeCtx.Provider value={{ size: fontSize, setSize: setFontSize }}>
+      <ToastProvider>
+        <HumanReviewProvider logAudit={logAudit}>
+          {view === "landing" && <div style={marketingFont}><LandingPage onSignInClick={toRole} /></div>}
+          {view === "role" && <div style={marketingFont}><RoleSelectionPage onRoleSelect={r => setView(r === "builder" ? "candidate" : "employer")} onBack={() => setView("landing")} /></div>}
+          {view === "candidate" && <CandidateApp addBuilder={addBuilder} builders={builders} pipeline={pipeline} squads={squads} joinSquad={joinSquad} leaveSquad={leaveSquad} formSquad={formSquad} audit={audit} logAudit={logAudit} exit={() => setView("landing")} toRole={toRole} />}
+          {view === "employer" && <EmployerApp builders={builders} pipeline={pipeline} setPipeline={setPipeline} logAudit={logAudit} exit={() => setView("landing")} toRole={toRole} />}
+        </HumanReviewProvider>
+      </ToastProvider>
+    </FontSizeCtx.Provider>
   </div>;
 }
