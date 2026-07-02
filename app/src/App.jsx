@@ -40,6 +40,7 @@ textarea,input{font-family:'Inter',sans-serif}
 button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #066E5A;outline-offset:2px}
 @keyframes zuriPulse{0%{box-shadow:0 0 0 2px rgba(6,110,90,0.55),0 0 0 5px rgba(6,110,90,0.16)}50%{box-shadow:0 0 0 3px rgba(6,110,90,0.30),0 0 0 15px rgba(6,110,90,0)}100%{box-shadow:0 0 0 2px rgba(6,110,90,0.55),0 0 0 5px rgba(6,110,90,0.16)}}
 @keyframes toastin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
 /* Carbon shell: dark header + dark left side nav, one shared component */
 .fshell{height:100dvh;display:grid;grid-template-columns:248px 1fr;grid-template-rows:52px 1fr;grid-template-areas:"head head" "side main"}
 .fshell.noNav{grid-template-columns:1fr;grid-template-areas:"head" "main"}
@@ -214,19 +215,54 @@ const Centered = ({ children }) => <div style={{ minHeight: "100%", display: "fl
 const Scroll = ({ children }) => <div style={{ height: "100%", overflowY: "auto", padding: "26px 24px" }}>{children}</div>;
 
 // ---- toasts (shell chrome; any screen can push one via useToast) ----
+// Each toast is also kept in a short history (last ten, with timestamps) that
+// the header bell reveals, so a message that vanishes is not lost.
 const ToastCtx = createContext(() => {});
+const ToastHistoryCtx = createContext([]);
 const useToast = () => useContext(ToastCtx);
+const useToastHistory = () => useContext(ToastHistoryCtx);
 function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
+  const [history, setHistory] = useState([]);
   const push = useCallback((msg) => {
     const id = Math.random().toString(36).slice(2);
     setToasts(t => [...t, { id, msg }]);
+    setHistory(h => [{ id, msg, at: Date.now() }, ...h].slice(0, 10));
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3400);
   }, []);
   return <ToastCtx.Provider value={push}>
-    {children}
-    <div className="ftoasts" aria-live="polite">{toasts.map(t => <div key={t.id} className="ftoast" role="status">{t.msg}</div>)}</div>
+    <ToastHistoryCtx.Provider value={history}>
+      {children}
+      <div className="ftoasts" aria-live="polite">{toasts.map(t => <div key={t.id} className="ftoast" role="status">{t.msg}</div>)}</div>
+    </ToastHistoryCtx.Provider>
   </ToastCtx.Provider>;
+}
+
+// Header bell: opens a slide-in panel of the last ten notifications with times.
+function NotificationBell() {
+  const history = useToastHistory();
+  const [open, setOpen] = useState(false);
+  return <>
+    <button onClick={() => setOpen(o => !o)} aria-label="Notification history" aria-expanded={open} style={{ position: "relative", background: "transparent", border: "none", cursor: "pointer", color: "#EEF3F8", padding: 6, display: "inline-flex", alignItems: "center" }}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
+      {history.length > 0 && <span aria-hidden="true" style={{ position: "absolute", top: 3, right: 3, width: 7, height: 7, borderRadius: "50%", background: T.emerald }} />}
+    </button>
+    {open && <>
+      <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(12,26,38,0.35)" }} />
+      <aside role="dialog" aria-label="Notification history" style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 320, maxWidth: "90vw", zIndex: 91, background: T.surface, borderLeft: `1px solid ${T.line}`, boxShadow: "-8px 0 30px rgba(12,26,38,0.2)", padding: 18, overflowY: "auto", animation: "slideIn .22s ease" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 16 }}>Notifications</div>
+          <button onClick={() => setOpen(false)} aria-label="Close notification history" style={{ background: "transparent", border: "none", cursor: "pointer", color: T.slateLg, fontSize: 20, lineHeight: 1, padding: 4 }}>×</button>
+        </div>
+        {history.length === 0
+          ? <p style={{ fontSize: 13.5, color: T.slate }}>No notifications yet.</p>
+          : <div style={{ display: "grid", gap: 10 }}>{history.map(t => <div key={t.id} style={{ borderLeft: `3px solid ${T.emerald}`, paddingLeft: 10 }}>
+            <div style={{ fontSize: 13.5, color: T.ink, lineHeight: 1.5 }}>{t.msg}</div>
+            <div style={{ fontFamily: F.mono, fontSize: 10.5, color: T.slate, marginTop: 2 }}>{new Date(t.at).toLocaleTimeString()}</div>
+          </div>)}</div>}
+      </aside>
+    </>}
+  </>;
 }
 
 // ---- Human-in-the-loop (both portals) ----
@@ -2339,6 +2375,7 @@ function Shell({ role, exit, nav, active, onNav, children, showZuri }) {
       <button onClick={exit} className="fbrand" aria-label="Fumana home">FUMANA</button>
       <span style={{ color: "#8BA0AD", fontSize: 12 }}>{role} portal</span>
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
+        <NotificationBell />
         <button onClick={exit} style={{ fontFamily: F.mono, fontSize: 11, color: "#9FB0BC", background: "transparent", border: "1px solid #24343F", borderRadius: 6, padding: "5px 10px", cursor: "pointer" }}>switch role</button>
         <span style={{ fontFamily: F.mono, fontSize: 11, color: "#3E8E7E" }}>Powered by Telos</span>
       </div>
