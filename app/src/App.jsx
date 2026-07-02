@@ -477,7 +477,7 @@ function Wallet({ builders, pipeline }) {
 // Squads are a seeded list you can join; peer activity is read from the shared
 // builders store; the impact portfolio and Good Citizen Points are computed
 // counters with disclosed formulas (illustrative, real accounting is backend).
-function Community({ builders, pipeline, squads, onJoin, onLeave, onForm }) {
+function Community({ builders, pipeline, squads, onJoin, onLeave, onForm, culture }) {
   const me = builders.find(b => b.isYou);
   const [nsName, setNsName] = useState("");
   const [nsFocus, setNsFocus] = useState("");
@@ -493,7 +493,8 @@ function Community({ builders, pipeline, squads, onJoin, onLeave, onForm }) {
   const netMonthly = contract ? Math.round(contract.monthlyUsd * 0.70) : 0;
   const localImpact = Math.round(netMonthly * 12 * 0.62); // illustrative annual local value retained
   const joinedCount = squads.filter(s => s.joined).length;
-  const gcp = me.profileStrength + joinedCount * 40;
+  const cultureBonus = culture != null ? 300 : 0;
+  const gcp = me.profileStrength + joinedCount * 40 + cultureBonus;
   const ctrl = { width: "100%", background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11, fontSize: 14 };
   const canForm = nsName.trim() && nsFocus.trim();
   const form = () => { if (!canForm) return; onForm({ name: nsName.trim(), focus: nsFocus.trim(), pitch: nsPitch.trim() }); setNsName(""); setNsFocus(""); setNsPitch(""); };
@@ -514,7 +515,7 @@ function Community({ builders, pipeline, squads, onJoin, onLeave, onForm }) {
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginTop: 10 }}>
       <Stat n={gcp} label="Good Citizen Points" /><Stat n={engagements} label="engagements" /><Stat n={usd(localImpact)} label="local impact / yr, illustrative" /><Stat n={joinedCount} label="squads joined" />
     </div>
-    <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11.5, color: T.slate }}>Good Citizen Points = profile strength {me.profileStrength} + 40 per squad joined. Impact figures are computed and illustrative; real impact accounting runs on the backend.</div>
+    <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11.5, color: T.slate }}>Good Citizen Points = profile strength {me.profileStrength} + 40 per squad joined{cultureBonus ? " + 300 for the Culture Shock Simulator" : ""}. Impact figures are computed and illustrative; real impact accounting runs on the backend.</div>
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>{["SDG 8", "SDG 9", "SDG 17"].map(s => <span key={s} style={{ fontFamily: F.mono, fontSize: 11, color: T.emerald, border: `1px solid ${T.line}`, borderRadius: 4, padding: "2px 8px" }}>{s}</span>)}</div>
 
     <div style={{ marginTop: 22 }}>
@@ -578,6 +579,7 @@ const AUDIT_VIEW = {
   "assessment-completed": () => ({ label: "Assessment completed", desc: "You completed the AI interview with Zuri." }),
   "score-issued": e => ({ label: "Score issued", desc: `Profile Strength ${e.profileStrength} issued, ${e.tier} tier.` }),
   "accommodations": e => ({ label: "Accommodations selected", desc: `${ACCOMMODATIONS.filter(a => e[a.id]).map(a => a.label.toLowerCase()).join(", ") || "none"}.` }),
+  "culture-sim": e => ({ label: "Culture Shock Simulator completed", desc: `You scored ${e.score}/100.` }),
   "contest": e => ({ label: "Score contested", desc: `You contested your ${e.dimension} score. Reference ${e.ref}.` }),
   "report": e => ({ label: "Issue reported", desc: `You reported: ${e.category}. Reference ${e.ref}.` }),
   "human-review": e => ({ label: "Human review requested", desc: `${e.decision}. Reference ${e.ref}.` }),
@@ -1285,6 +1287,7 @@ function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leave
   const [accommodations, setAccommodations] = useState({ extraTime: false, textOnly: false, written: false });
   const [result, setResult] = useState(null);
   const [points, setPoints] = useState(0);
+  const [culture, setCulture] = useState(null); // best Culture Shock Simulator score
   const [published, setPublished] = useState(false);
   const toast = useToast();
   const inApp = CAND_NAV.some(([k]) => k === screen) || ["fairness", "audit", "report", "ethics", "cvbuilder"].includes(screen);
@@ -1308,13 +1311,13 @@ function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leave
     {screen === "assessinfo" && <AssessInfo accommodations={accommodations} setAccommodations={setAccommodations} onOptIn={() => { if (accommodations.extraTime || accommodations.textOnly || accommodations.written) logAudit({ kind: "accommodations", ...accommodations }); setScreen("interview"); }} onOptOut={() => setScreen("humanreview")} onBack={() => setScreen("onboarding")} />}
     {screen === "humanreview" && <HumanReview onSwitch={() => setScreen("interview")} />}
     {screen === "interview" && <Interview profile={profile} accommodations={accommodations} onBack={() => setScreen("assessinfo")} onComplete={finish} />}
-    {screen === "dashboard" && result && <Dashboard profile={profile} result={result} onUpskill={() => setScreen("upskill")} published={published} audit={audit} logAudit={logAudit} />}
-    {screen === "upskill" && result && <Upskill result={result} points={points} setPoints={setPoints} />}
+    {screen === "dashboard" && result && <Dashboard profile={profile} result={result} onUpskill={() => setScreen("upskill")} published={published} audit={audit} logAudit={logAudit} culture={culture} />}
+    {screen === "upskill" && result && <Upskill result={result} points={points} setPoints={setPoints} culture={culture} setCulture={setCulture} logAudit={logAudit} />}
     {screen === "applications" && <Applications builders={builders} pipeline={pipeline} />}
     {screen === "wallet" && <Wallet builders={builders} pipeline={pipeline} />}
     {screen === "coach" && <NegotiationCoach profile={profile} builders={builders} pipeline={pipeline} />}
     {screen === "worth" && <GlobalWorth profile={profile} builders={builders} pipeline={pipeline} />}
-    {screen === "community" && <Community builders={builders} pipeline={pipeline} squads={squads} onJoin={joinSquad} onLeave={leaveSquad} onForm={formSquad} />}
+    {screen === "community" && <Community builders={builders} pipeline={pipeline} squads={squads} onJoin={joinSquad} onLeave={leaveSquad} onForm={formSquad} culture={culture} />}
     {screen === "alchemist" && <ExperienceAlchemist profile={profile} onBuildCV={() => setScreen("cvbuilder")} />}
     {screen === "cvbuilder" && <CVBuilder profile={profile} saveCV={cv => setProfile(p => ({ ...p, cv }))} onBack={() => setScreen("alchemist")} />}
     {screen === "settings" && <Settings builders={builders} onFairness={() => setScreen("fairness")} onAudit={() => setScreen("audit")} onReport={() => setScreen("report")} onEthics={() => setScreen("ethics")} logAudit={logAudit} />}
@@ -1669,7 +1672,7 @@ function Interview({ profile, accommodations, onBack, onComplete }) {
   </div></Scroll>;
 }
 
-function Dashboard({ profile, result, onUpskill, published, audit, logAudit }) {
+function Dashboard({ profile, result, onUpskill, published, audit, logAudit, culture }) {
   const tier = result.tier; const rec = MODULES[result.weakest?.name] || MODULES["Technical depth"];
   const [zuri, setZuri] = useState(""); const [zb, setZb] = useState(false); const [showCalc, setShowCalc] = useState(false);
   const [openDims, setOpenDims] = useState({});
@@ -1690,7 +1693,7 @@ function Dashboard({ profile, result, onUpskill, published, audit, logAudit }) {
   return <Scroll><div style={{ maxWidth: 860, margin: "0 auto" }} className="rise">
     {published && <div style={{ marginBottom: 16, background: "rgba(6,110,90,0.06)", border: `1px solid ${T.emerald}`, borderRadius: 10, padding: "11px 14px", fontSize: 13.5, color: T.vault }}>✓ You are now in the network, identity shielded. Switch to the employer side and search to find yourself.</div>}
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}>
-      <div><Eyebrow>Growth dashboard</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 2px" }}>{profile.name || "Your"} profile</h2><div style={{ color: T.slate, fontSize: 14 }}>{profile.role} . {profile.city || "location hidden"}</div></div>
+      <div><Eyebrow>Growth dashboard</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 2px" }}>{profile.name || "Your"} profile</h2><div style={{ color: T.slate, fontSize: 14 }}>{profile.role} . {profile.city || "location hidden"}</div>{culture != null && <div style={{ marginTop: 8 }}><span style={{ fontFamily: F.mono, fontSize: 11.5, color: T.emerald, border: `1px solid ${T.emerald}`, borderRadius: 6, padding: "3px 9px" }}>✓ Culture Shock Simulator {culture}/100</span></div>}</div>
       <div style={{ textAlign: "right" }}><div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 46, color: T.emerald, lineHeight: 1 }}>{result.profileStrength}</div><button onClick={() => setShowCalc(s => !s)} style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline" }}>profile strength . how is this calculated</button><div><span style={{ display: "inline-block", marginTop: 6, fontFamily: F.mono, fontSize: 12, color: T.onAccent, background: tier.color, borderRadius: 5, padding: "3px 10px" }}>{tier.name} tier</span></div><div style={{ marginTop: 6, display: "flex", gap: 14, justifyContent: "flex-end", flexWrap: "wrap" }}><ReviewLink what={`Profile Strength: ${result.profileStrength}`} /><button onClick={openContest} style={{ fontFamily: F.mono, fontSize: 11, color: T.brass, background: "transparent", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", whiteSpace: "nowrap" }}>Contest this score</button></div></div>
     </div>
     {showCalc && <div style={{ marginTop: 14 }}><Card pad={16} accent={T.brass}><Label>How this was calculated</Label><p style={{ fontSize: 13.5, color: T.slate, margin: "8px 0 10px" }}>Telos assessed each dimension 0 to 100 from your interview and experience. Profile Strength is the weighted average.</p><div style={{ display: "grid", gap: 5 }}>{result.dimensions.map((d, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", fontFamily: F.mono, fontSize: 12, color: T.slate }}><span>{d.name}</span><span>{d.score} × {WEIGHTS[d.name]?.toFixed(2)}</span></div>)}<div style={{ display: "flex", justifyContent: "space-between", fontFamily: F.mono, fontSize: 12.5, color: T.emerald, borderTop: `1px solid ${T.mute}`, paddingTop: 6, marginTop: 2 }}><span>weighted average</span><span>{result.profileStrength}</span></div></div></Card></div>}
@@ -1750,13 +1753,143 @@ function Dashboard({ profile, result, onUpskill, published, audit, logAudit }) {
   </div></Scroll>;
 }
 
-function Upskill({ result, points, setPoints }) {
+// ---- Culture Shock Simulator (candidate, inside Path to 1%). NEEDS MODEL ----
+// Scenario-based training on Western corporate communication norms. Telos scores
+// each choice and reads the completion. getScenarios() is the adaptive seam.
+const CULTURE_SCENARIOS = [
+  { id: "cs-001", title: "The blunt message", situation: "Your manager in Berlin sends a Slack message at 9pm your time: 'This is not what I asked for. Redo it.' You spent three days on this work.", options: ["Wait until tomorrow and redo it without responding.", "Reply immediately: 'I apologize. I will redo it right away.'", "Reply: 'Understood. Can you point me to what needs to change so I get it right this time?'", "Reply: 'I worked hard on this. Could you tell me specifically what is wrong?'"], correct: 2, explanation: "Option C is correct. In Western enterprise contexts, asking for specific feedback is professional, not defensive. It shows you want to solve the problem, not just comply. Option A is passive and reads as avoidance. Option B over-apologizes without gathering information to improve. Option D sounds defensive about effort rather than focused on outcome." },
+  { id: "cs-002", title: "The silent deadline", situation: "A US client gave you a task on Monday with no deadline. It is now Thursday. You are 80% done but need two more days.", options: ["Finish it before reaching out. Deliver on Saturday.", "Send a message now: 'Update: I am 80% done. I need two more days, delivering Saturday. Blocking issue: [X]. Need anything from you before then?'", "Wait until Friday to send an update.", "Ask your manager what the deadline was before doing anything else."], correct: 1, explanation: "Option B is correct. Proactive async updates are the single most valued behavior in Western remote teams. Do not wait to be asked. State progress, state the new date, name any blocker. Option A delivers without communication, which creates anxiety for the client. Options C and D are too late or too passive." },
+  { id: "cs-003", title: "Disagreeing with a senior", situation: "Your tech lead proposes an architecture you believe will cause scaling problems in six months. You are the most junior person on the call.", options: ["Stay quiet. It is not your place to challenge a senior.", "Challenge them directly in the meeting: 'That will not scale.'", "After the meeting, send a private message with your concern and your alternative.", "Raise it in the meeting: 'I want to flag a potential scaling concern. Can I share a quick alternative for the team to consider?'"], correct: 3, explanation: "Option D is correct. Western enterprise values technical input regardless of seniority, but framing matters. Asking permission to share ('can I...') shows respect for the meeting flow. Naming it a 'concern' rather than a verdict keeps it collaborative. Option A wastes your knowledge. Option B is abrupt. Option C is good but private, which misses the team benefit." },
+  { id: "cs-004", title: "The unclear requirement", situation: "You receive a task with a two-day deadline. The requirements are ambiguous in two key areas. Your tech lead is in a different timezone and offline for the next eight hours.", options: ["Wait for them to come online before starting.", "Make your best assumptions, document them, start work, and send a message outlining your assumptions and asking for confirmation when they are back.", "Start work on the parts that are clear and ignore the ambiguous sections.", "Email the client directly to clarify."], correct: 1, explanation: "Option B is correct. Document your assumptions and proceed. This is the core async muscle. You keep the project moving, you show initiative, and you create a clear record. Option A stalls the work unnecessarily. Option C creates a partial deliverable with hidden gaps. Option D bypasses the chain of communication." },
+  { id: "cs-005", title: "The critical code review", situation: "A senior colleague leaves twelve comments on your pull request. Three are blocking. The tone is terse and technical, no praise.", options: ["Feel discouraged. A good PR would have fewer comments.", "Address the three blocking comments and mark the others as 'will fix later.'", "Address every comment, reply to each one explaining what you changed or why you disagree, and re-request review.", "Ask your manager if the feedback was fair before responding."], correct: 2, explanation: "Option C is correct. Thorough engagement with every review comment, including explaining your reasoning when you disagree, is the mark of a senior engineering culture. Terse review comments are normal, not hostile. Option A misreads the culture. Option B leaves unresolved items. Option D escalates unnecessarily." },
+];
+function getScenarios() { return CULTURE_SCENARIOS; }
+
+function MicroInternships() {
+  const toast = useToast();
+  const list = [
+    { title: "Payment reconciliation audit", weeks: "2 weeks", skills: ["Python", "PostgreSQL"] },
+    { title: "Accessible dashboard component", weeks: "1 week", skills: ["React", "Accessibility"] },
+    { title: "ETL pipeline hardening", weeks: "3 weeks", skills: ["Airflow", "SQL"] },
+  ];
+  return <div style={{ marginTop: 18 }}>
+    <p style={{ color: T.slate, fontSize: 14, marginBottom: 14 }}>Short, project-based work to prove your skills before a full engagement. Apply, deliver, and convert.</p>
+    <div style={{ display: "grid", gap: 12 }}>{list.map((m, i) => <Card key={i}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+        <div><div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 16 }}>{m.title}</div><div style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, marginTop: 3 }}>{m.weeks}</div></div>
+        <Btn small kind="ghost" onClick={() => toast("Application sent. Matching runs on the backend.")}>Apply</Btn>
+      </div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>{m.skills.map((s, j) => <span key={j} style={{ fontFamily: F.mono, fontSize: 11.5, color: T.emerald, border: `1px solid ${T.line}`, borderRadius: 4, padding: "3px 8px" }}>{s}</span>)}</div>
+    </Card>)}</div>
+    <div style={{ marginTop: 12, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Applying and matching run on the backend. Seed projects shown here.</div>
+  </div>;
+}
+
+function CultureShock({ culture, setCulture, logAudit }) {
+  const scenarios = getScenarios();
+  const total = scenarios.length;
+  const [phase, setPhase] = useState("intro"); // intro | play | done
+  const [idx, setIdx] = useState(0);
+  const [picked, setPicked] = useState(null);
+  const [answers, setAnswers] = useState([]);
+  const [score, setScore] = useState(0);
+  const [telos, setTelos] = useState("");
+  const [tBusy, setTBusy] = useState(false);
+  const [tErr, setTErr] = useState("");
+
+  function start() { setPhase("play"); setIdx(0); setPicked(null); setAnswers([]); setScore(0); setTelos(""); setTErr(""); }
+  async function getTelos(finalScore, finalAnswers) {
+    setTBusy(true); setTErr("");
+    try {
+      const sys = "You are Telos, assessing a builder's Western corporate communication readiness. In two sentences, give a direct, honest read of their performance across these five scenarios. Name their strongest instinct and the one area to sharpen. No flattery. No em dashes.";
+      const user = `Score: ${finalScore}/100. Scenario results: ${finalAnswers.map(a => `${a.title}: ${a.correct ? "correct" : "incorrect"}`).join("; ")}.`;
+      setTelos(await callClaude({ system: sys, messages: [{ role: "user", content: user }], expectJson: false }));
+    } catch (e) { setTErr(String(e).includes("501") ? "config" : "fail"); }
+    setTBusy(false);
+  }
+  function finish(finalScore, finalAnswers) {
+    setPhase("done");
+    const firstTime = culture == null;
+    setCulture(prev => (prev == null || finalScore > prev ? finalScore : prev));
+    if (firstTime && logAudit) logAudit({ kind: "culture-sim", score: finalScore });
+    getTelos(finalScore, finalAnswers);
+  }
+  function next() {
+    const correct = picked === scenarios[idx].correct;
+    const nextAnswers = [...answers, { id: scenarios[idx].id, title: scenarios[idx].title, correct }];
+    const nextScore = score + (correct ? 20 : 0);
+    setAnswers(nextAnswers); setScore(nextScore);
+    if (idx + 1 >= total) { finish(nextScore, nextAnswers); return; }
+    setIdx(idx + 1); setPicked(null);
+  }
+
+  if (phase === "intro") return <div style={{ marginTop: 18 }}><Card>
+    <Label>Culture Shock Simulator</Label>
+    <p style={{ fontSize: 14.5, color: T.ink, margin: "10px 0 8px", lineHeight: 1.6 }}>Five scenarios. Real workplace situations. Choose how you respond. Telos explains the reasoning behind each answer.</p>
+    {culture != null && <div style={{ fontFamily: F.mono, fontSize: 12, color: T.emerald, marginBottom: 10 }}>Your best score: {culture}/100</div>}
+    <Btn onClick={start}>{culture != null ? "Play again" : "Start the simulator"}</Btn>
+  </Card></div>;
+
+  if (phase === "play") {
+    const s = scenarios[idx];
+    const revealed = picked != null;
+    return <div style={{ marginTop: 18 }}>
+      <div style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, marginBottom: 10 }}>scenario {idx + 1} of {total} . score {score}</div>
+      <Card>
+        <Label>{s.title}</Label>
+        <p style={{ fontSize: 14.5, color: T.ink, margin: "10px 0 14px", lineHeight: 1.6, background: T.paper, borderLeft: `3px solid ${T.line}`, padding: "10px 14px", borderRadius: 8 }}>{s.situation}</p>
+        <div style={{ display: "grid", gap: 8 }}>{s.options.map((opt, i) => {
+          const isCorrect = i === s.correct, isPicked = picked === i;
+          const border = !revealed ? T.line : isCorrect ? T.emerald : isPicked ? T.alert : T.line;
+          const bg = !revealed ? T.surface : isCorrect ? "rgba(6,110,90,0.06)" : isPicked ? "rgba(168,67,31,0.06)" : T.surface;
+          return <button key={i} onClick={() => { if (!revealed) setPicked(i); }} disabled={revealed} aria-pressed={isPicked}
+            style={{ textAlign: "left", width: "100%", background: bg, border: `1px solid ${border}`, borderRadius: 10, padding: "12px 14px", fontSize: 14, cursor: revealed ? "default" : "pointer", color: T.ink, opacity: revealed && !isCorrect && !isPicked ? 0.6 : 1, lineHeight: 1.5 }}>
+            <span style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, marginRight: 8 }}>{String.fromCharCode(65 + i)}</span>{opt}{revealed && isCorrect ? "  ✓" : revealed && isPicked ? "  ✗" : ""}
+          </button>;
+        })}</div>
+        {revealed && <div style={{ marginTop: 14, background: T.paper, border: `1px solid ${picked === s.correct ? T.emerald : T.brass}`, borderLeft: `3px solid ${picked === s.correct ? T.emerald : T.brass}`, borderRadius: 8, padding: 14 }}>
+          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, color: picked === s.correct ? T.emerald : T.brass }}>{picked === s.correct ? "Correct. +20 points" : "Not the strongest choice. +0 points"}</div>
+          <p style={{ fontSize: 13.5, color: T.ink, lineHeight: 1.6 }}>{s.explanation}</p>
+          <div style={{ marginTop: 12 }}><Btn small onClick={next}>{idx + 1 >= total ? "See results" : "Next scenario"}</Btn></div>
+        </div>}
+      </Card>
+    </div>;
+  }
+
+  // done
+  return <div style={{ marginTop: 18 }}><Card accent={T.emerald}>
+    <Label>Complete</Label>
+    <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 40, color: T.emerald, marginTop: 6, lineHeight: 1 }}>{score}<span style={{ fontSize: 20, color: T.slate }}>/100</span></div>
+    <div style={{ display: "grid", gap: 5, marginTop: 14 }}>{answers.map((a, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, borderTop: `1px solid ${T.mute}`, paddingTop: 6 }}><span>{a.title}</span><span style={{ fontFamily: F.mono, fontSize: 12, color: a.correct ? T.emerald : T.alert }}>{a.correct ? "+20" : "+0"}</span></div>)}</div>
+    <div style={{ marginTop: 16 }}>
+      {tBusy ? <Spinner label="Telos is reading your results..." />
+        : tErr === "config" ? <p style={{ fontSize: 14, color: T.slate }}>You completed all five scenarios. Telos's personalized read lights up the moment a model provider is connected.</p>
+          : tErr === "fail" ? <div style={{ color: T.alert, fontSize: 14, display: "flex", gap: 12, alignItems: "center" }}>Telos did not respond. <Btn kind="ghost" small onClick={() => getTelos(score, answers)}>Try again</Btn></div>
+            : telos ? <div style={{ background: T.paper, borderLeft: `3px solid ${T.emerald}`, borderRadius: 8, padding: "10px 14px" }}><div style={{ fontFamily: F.mono, fontSize: 10.5, color: T.slateLg, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 4 }}>Telos read</div><p style={{ fontSize: 14, lineHeight: 1.6 }}>{telos}</p></div>
+              : null}
+    </div>
+    {score < 60 && <p style={{ marginTop: 12, fontSize: 13.5, color: T.brass }}>Retake to improve your score. Your best score is recorded.</p>}
+    <div style={{ marginTop: 14 }}><Btn small onClick={start}>{score < 60 ? "Retake" : "Play again"}</Btn></div>
+    <div style={{ marginTop: 10, fontFamily: F.mono, fontSize: 11, color: T.slate }}>300 Good Citizen Points awarded on first completion. Best score recorded on your profile.</div>
+  </Card></div>;
+}
+
+function Upskill({ result, points, setPoints, culture, setCulture, logAudit }) {
   const recId = (MODULES[result.weakest?.name] || {}).id; const list = Object.values(MODULES); const [done, setDone] = useState({});
+  const [tab, setTab] = useState("training");
   const complete = m => { if (done[m.id]) return; setDone(d => ({ ...d, [m.id]: true })); setPoints(p => p + m.pts); };
+  const TABS = [["training", "Training"], ["micro", "Micro-internships"], ["culture", "Culture Shock Simulator"]];
   return <Scroll><div style={{ maxWidth: 860, margin: "0 auto" }} className="rise">
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}><div><Eyebrow>Path to 1%</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 0" }}>Close the gap, reach the top tier</h2></div><div style={{ textAlign: "right" }}><div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 30, color: T.brass, lineHeight: 1 }}>{points}</div><div style={{ fontFamily: F.mono, fontSize: 11, color: T.slate }}>reward points</div></div></div>
-    <div className="mods" style={{ marginTop: 20 }}>{list.map(m => { const isRec = m.id === recId, finished = done[m.id]; return <Card key={m.id} accent={isRec ? T.brass : T.line}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><Label>{isRec ? "recommended for you" : "module"}</Label>{finished && <span style={{ fontFamily: F.mono, fontSize: 11, color: T.emerald }}>completed</span>}</div><div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 17, marginTop: 8 }}>{m.title}</div><p style={{ fontSize: 13.5, color: T.slate, margin: "6px 0 14px" }}>{m.blurb}</p><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontFamily: F.mono, fontSize: 12, color: T.emerald }}>+{m.pts} pts</span><Btn kind={finished ? "ghost" : "primary"} small disabled={finished} onClick={() => complete(m)}>{finished ? "Done" : "Complete module"}</Btn></div></Card>; })}</div>
-    <div style={{ marginTop: 18 }}><Card><Label>Achievements</Label><div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}><Badge on label="Profile verified" /><Badge on={result.profileStrength >= 50} label="Silver reached" /><Badge on={result.profileStrength >= 70} label="Gold reached" /><Badge on={Object.keys(done).length >= 1} label="First module" /><Badge on={points >= 500} label="500 points" /></div></Card></div>
+    <div role="tablist" aria-label="Path to 1% sections" style={{ display: "flex", gap: 6, marginTop: 18, flexWrap: "wrap", borderBottom: `1px solid ${T.line}` }}>
+      {TABS.map(([k, lbl]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} style={{ background: "transparent", border: "none", borderBottom: `2px solid ${tab === k ? T.emerald : "transparent"}`, color: tab === k ? T.ink : T.slate, fontFamily: F.body, fontSize: 13.5, fontWeight: tab === k ? 600 : 400, padding: "8px 6px", cursor: "pointer" }}>{lbl}</button>)}
+    </div>
+    {tab === "training" && <>
+      <div className="mods" style={{ marginTop: 20 }}>{list.map(m => { const isRec = m.id === recId, finished = done[m.id]; return <Card key={m.id} accent={isRec ? T.brass : T.line}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><Label>{isRec ? "recommended for you" : "module"}</Label>{finished && <span style={{ fontFamily: F.mono, fontSize: 11, color: T.emerald }}>completed</span>}</div><div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 17, marginTop: 8 }}>{m.title}</div><p style={{ fontSize: 13.5, color: T.slate, margin: "6px 0 14px" }}>{m.blurb}</p><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontFamily: F.mono, fontSize: 12, color: T.emerald }}>+{m.pts} pts</span><Btn kind={finished ? "ghost" : "primary"} small disabled={finished} onClick={() => complete(m)}>{finished ? "Done" : "Complete module"}</Btn></div></Card>; })}</div>
+      <div style={{ marginTop: 18 }}><Card><Label>Achievements</Label><div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}><Badge on label="Profile verified" /><Badge on={result.profileStrength >= 50} label="Silver reached" /><Badge on={result.profileStrength >= 70} label="Gold reached" /><Badge on={Object.keys(done).length >= 1} label="First module" /><Badge on={points >= 500} label="500 points" /><Badge on={culture != null} label={culture != null ? `Culture Shock ${culture}/100` : "Culture Shock Simulator"} /></div></Card></div>
+    </>}
+    {tab === "micro" && <MicroInternships />}
+    {tab === "culture" && <CultureShock culture={culture} setCulture={setCulture} logAudit={logAudit} />}
     <div style={{ height: 30 }} />
   </div></Scroll>;
 }
