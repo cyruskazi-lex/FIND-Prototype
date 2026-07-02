@@ -1672,6 +1672,70 @@ function Interview({ profile, accommodations, onBack, onComplete }) {
   </div></Scroll>;
 }
 
+// ---- Trajectory Forecast (Growth Dashboard tile). NO MODEL for the forecast
+// (computed from dimension scores and the weight formula); NEEDS MODEL for the
+// narrative, inert-aware. Picks the highest gain-potential dimension.
+const EFFORT = {
+  "Culture Shock Simulator": "45 mins",
+  "Async Operating Rhythm": "2 hours",
+  "Professional Presence": "1.5 hours",
+  "Collaboration and Code Review": "2 hours",
+  "Structured Problem Solving": "2.5 hours",
+  "Technical Deep Dive": "3 hours",
+};
+function TrajectoryForecast({ result }) {
+  const withGain = (result.dimensions || []).map(d => { const weight = WEIGHTS[d.name] ?? 0.15; return { name: d.name, score: d.score, weight, gain: (100 - d.score) * weight }; });
+  const forecast = withGain.length ? withGain.reduce((a, b) => (b.gain > a.gain ? b : a)) : null;
+  const current = result.profileStrength;
+  const projected = forecast ? Math.round(current + (75 - forecast.score) * forecast.weight) : current;
+  const delta = projected - current;
+  const mod = forecast ? MODULES[forecast.name] : null;
+  const effort = mod ? (EFFORT[mod.title] || "varies") : "";
+  const [narr, setNarr] = useState("");
+  const [nBusy, setNBusy] = useState(false);
+  const [nErr, setNErr] = useState("");
+  const userPrompt = forecast ? `Profile Strength: ${current}. Weakest high-weight dimension: ${forecast.name} at ${forecast.score}, weight ${forecast.weight}. Projected strength if this dimension reaches 75: ${projected}. Other dimensions: ${withGain.filter(d => d.name !== forecast.name).map(d => `${d.name} ${d.score}`).join(", ")}.` : "";
+  useEffect(() => {
+    if (!userPrompt) return;
+    let cancelled = false;
+    (async () => {
+      setNBusy(true); setNErr("");
+      try {
+        const sys = "You are Telos, the intelligence layer for FIND. In two to three sentences, explain in plain language why this specific dimension is the highest-leverage intervention for this candidate right now, grounded in the weighting formula and their current scores. Be specific. No flattery. No em dashes. Do not invent figures; reference only the numbers provided.";
+        const out = await callClaude({ system: sys, messages: [{ role: "user", content: userPrompt }], expectJson: false });
+        if (!cancelled) setNarr(out);
+      } catch (e) { if (!cancelled) setNErr(String(e).includes("501") ? "config" : "fail"); }
+      if (!cancelled) setNBusy(false);
+    })();
+    return () => { cancelled = true; };
+  }, [userPrompt]); // fires once per forecast (prompt is stable per render)
+
+  if (!forecast) return null;
+  return <Card accent={T.emerald}>
+    <Label>Trajectory Forecast</Label>
+    <div style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, marginTop: 4 }}>Computed by Telos. The single intervention that moves your score fastest.</div>
+    <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5 }}><span style={{ color: T.slate }}>Current Profile Strength</span><span style={{ fontFamily: F.mono }}>{current}</span></div>
+      <div style={{ background: T.paper, border: `1px solid ${T.line}`, borderRadius: 8, padding: 12 }}>
+        <div style={{ fontFamily: F.mono, fontSize: 10.5, color: T.slateLg, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 4 }}>Forecast intervention</div>
+        <div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 16 }}>{forecast.name} <span style={{ color: T.slate, fontWeight: 400, fontSize: 13 }}>at {forecast.score}</span></div>
+        <div style={{ fontSize: 13, color: T.slate, marginTop: 4 }}>Module: {mod ? mod.title : "—"} . est. {effort}</div>
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+        <span style={{ fontSize: 13.5, color: T.slate }}>Projected if it reaches 75</span>
+        <span><span style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 22, color: T.emerald }}>{projected}</span> <span style={{ fontFamily: F.mono, fontSize: 12, color: T.emerald }}>{delta >= 0 ? "+" : ""}{delta} points</span></span>
+      </div>
+    </div>
+    <div style={{ marginTop: 12 }}>
+      {nBusy ? <Spinner label="Telos is explaining the forecast..." />
+        : nErr ? <div style={{ fontSize: 13, color: T.slate }}>Telos narrative available once a provider is connected.</div>
+          : narr ? <div style={{ background: T.paper, borderLeft: `3px solid ${T.emerald}`, borderRadius: 8, padding: "10px 12px", fontSize: 13.5, lineHeight: 1.6 }}>{narr}</div>
+            : null}
+    </div>
+    <div style={{ marginTop: 16, fontFamily: F.mono, fontSize: 10.5, color: T.slate, borderTop: `1px solid ${T.mute}`, paddingTop: 10 }}>Forecast computed by Telos from your dimension scores and the disclosed weighting formula. Projected score assumes the target dimension reaches 75. No figure is model-generated.</div>
+  </Card>;
+}
+
 function Dashboard({ profile, result, onUpskill, published, audit, logAudit, culture }) {
   const tier = result.tier; const rec = MODULES[result.weakest?.name] || MODULES["Technical depth"];
   const [zuri, setZuri] = useState(""); const [zb, setZb] = useState(false); const [showCalc, setShowCalc] = useState(false);
@@ -1698,6 +1762,7 @@ function Dashboard({ profile, result, onUpskill, published, audit, logAudit, cul
     </div>
     {showCalc && <div style={{ marginTop: 14 }}><Card pad={16} accent={T.brass}><Label>How this was calculated</Label><p style={{ fontSize: 13.5, color: T.slate, margin: "8px 0 10px" }}>Telos assessed each dimension 0 to 100 from your interview and experience. Profile Strength is the weighted average.</p><div style={{ display: "grid", gap: 5 }}>{result.dimensions.map((d, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", fontFamily: F.mono, fontSize: 12, color: T.slate }}><span>{d.name}</span><span>{d.score} × {WEIGHTS[d.name]?.toFixed(2)}</span></div>)}<div style={{ display: "flex", justifyContent: "space-between", fontFamily: F.mono, fontSize: 12.5, color: T.emerald, borderTop: `1px solid ${T.mute}`, paddingTop: 6, marginTop: 2 }}><span>weighted average</span><span>{result.profileStrength}</span></div></div></Card></div>}
     <div className="dash" style={{ marginTop: 18 }}>
+      <div style={{ display: "grid", gap: 18, alignContent: "start" }}>
       <Card><Label>Dimension scores</Label><div style={{ display: "grid", gap: 18, marginTop: 14 }}>{result.dimensions.map((d, i) => {
         const b = BAND(d.score); const open = openDims[i]; const low = d.score < 60;
         return <div key={i}>
@@ -1720,6 +1785,8 @@ function Dashboard({ profile, result, onUpskill, published, audit, logAudit, cul
           </div>}
         </div>;
       })}</div></Card>
+      <TrajectoryForecast result={result} />
+      </div>
       <div style={{ display: "grid", gap: 16, alignContent: "start" }}>
         <Card accent={T.brass}><Label>Recommended next step</Label><div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 17, marginTop: 8 }}>{rec.title}</div><p style={{ fontSize: 13.5, color: T.slate, margin: "6px 0 12px" }}>{rec.blurb}</p><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontFamily: F.mono, fontSize: 12, color: T.emerald }}>+{rec.pts} pts</span><Btn small onClick={onUpskill}>Start module</Btn></div><div style={{ marginTop: 10, fontSize: 12, color: T.slate }}>Weakest dimension: <b>{result.weakest?.name}</b>.</div></Card>
         <Card accent={zuri ? T.emerald : T.line}><Label>Zuri . career copilot</Label>{!zuri && !zb && <div style={{ marginTop: 10 }}><Btn kind="ghost" small onClick={askZuri}>Ask Zuri what to do next</Btn></div>}{zb && <div style={{ marginTop: 12 }}><Spinner label="Zuri is thinking..." /></div>}{zuri && <p style={{ marginTop: 10, fontSize: 14, lineHeight: 1.6 }}>{zuri}</p>}</Card>
