@@ -415,11 +415,20 @@ function Wallet({ builders, pipeline, premium, onUpgrade }) {
   // Computed from the shared store: a SOW-stage engagement is the paying contract.
   const contract = me ? pipeline.sow.find(x => x.handle === me.handle) : null;
   const monthly = contract?.monthlyUsd || 0;
-  const net = Math.round(monthly * (1 - (WALLET_PLATFORM_PCT + WALLET_STATUTORY_PCT) / 100));
+  // Premium waives the platform fee on payouts, so the fee actually drops out of
+  // net pay rather than only changing the label on the balance card.
+  const platformPct = premium?.isPremium ? 0 : WALLET_PLATFORM_PCT;
+  const net = Math.round(monthly * (1 - (platformPct + WALLET_STATUTORY_PCT) / 100));
   const escrow = monthly ? net : 0;
   const available = monthly ? net : 0;
-  const history = monthly ? [{ label: "Previous cycle", amt: net }, { label: "Two cycles ago", amt: net }] : [];
-  const lifetime = available + escrow + history.reduce((a, h) => a + h.amt, 0);
+  // Payout history is built from real release events only. Nothing in this
+  // prototype releases an escrow cycle, so there is nothing to show and the
+  // empty state below is the honest result. Never synthesize past cycles.
+  const history = [];
+  // Lifetime earned counts released payouts only. An escrow balance is held, not
+  // earned, and the available balance is the current cycle, so neither belongs
+  // here. With nothing released this is zero, which is the honest figure.
+  const lifetime = history.reduce((a, h) => a + h.amt, 0);
 
   if (!me) return <Scroll><div style={{ maxWidth: 860, margin: "0 auto" }} className="rise">
     <Eyebrow>Wallet and Escrow</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 8px" }}>Your wallet</h2>
@@ -445,7 +454,7 @@ function Wallet({ builders, pipeline, premium, onUpgrade }) {
       </Card>
     </div>
 
-    <div style={{ marginTop: 12, fontFamily: F.mono, fontSize: 12, color: T.slate }}>Lifetime earned {usd(lifetime)}{monthly ? ` . from a ${usd(monthly)}/month engagement, ${usd(net)} net per cycle after a disclosed ${WALLET_PLATFORM_PCT}% platform fee and ${WALLET_STATUTORY_PCT}% illustrative statutory remittance` : " . no active contract yet"}</div>
+    <div style={{ marginTop: 12, fontFamily: F.mono, fontSize: 12, color: T.slate }}>Lifetime earned {usd(lifetime)} . released payouts only{monthly ? `. Your ${usd(monthly)}/month engagement nets ${usd(net)} per cycle after ${premium?.isPremium ? `no platform fee, waived on Premium,` : `a disclosed ${WALLET_PLATFORM_PCT}% platform fee and`} ${WALLET_STATUTORY_PCT}% illustrative statutory remittance` : ". No active contract yet"}</div>
 
     <div style={{ marginTop: 18 }}>
       <Label>Payout method</Label>
@@ -791,7 +800,7 @@ function FairnessPosture({ onBack }) {
   </div></Scroll>;
 }
 
-function Settings({ builders, onFairness, onAudit, onReport, onEthics, logAudit, premium, onUpgrade, onManage }) {
+function Settings({ builders, onDelete, onFairness, onAudit, onReport, onEthics, logAudit, premium, onUpgrade, onManage }) {
   const me = builders.find(b => b.isYou);
   const toast = useToast();
   const [lang, setLang] = useState("English");
@@ -867,10 +876,10 @@ function Settings({ builders, onFairness, onAudit, onReport, onEthics, logAudit,
         {!confirmDelete && !deleted && <Btn small kind="ghost" onClick={() => setConfirmDelete(true)}>Delete my data</Btn>}
       </div>
       {confirmDelete && !deleted && <div style={{ marginTop: 14, background: T.paper, border: `1px solid ${T.alert}`, borderRadius: 8, padding: 14 }}>
-        <div style={{ fontSize: 14, marginBottom: 10 }}>This requests removal of your profile and data from the network. This cannot be undone.</div>
-        <div style={{ display: "flex", gap: 10 }}><Btn small kind="ghost" onClick={() => { setConfirmDelete(false); setDeleted(true); if (logAudit) logAudit({ kind: "data-deletion" }); }}>Confirm delete</Btn><Btn small kind="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Btn></div>
+        <div style={{ fontSize: 14, marginBottom: 10 }}>This removes your profile and data from the network. This cannot be undone.</div>
+        <div style={{ display: "flex", gap: 10 }}><Btn small kind="ghost" onClick={() => { setConfirmDelete(false); setDeleted(true); if (onDelete && me) onDelete(me.handle); if (logAudit) logAudit({ kind: "data-deletion" }); }}>Confirm delete</Btn><Btn small kind="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Btn></div>
       </div>}
-      {deleted && <div style={{ marginTop: 14, background: T.paper, border: `1px solid ${T.line}`, borderRadius: 8, padding: 14, fontSize: 13.5, color: T.slate }}>Deletion requested. A reviewer will confirm and your profile is withdrawn from the network. Stubbed queue in this prototype.</div>}
+      {deleted && <div style={{ marginTop: 14, background: T.paper, border: `1px solid ${T.line}`, borderRadius: 8, padding: 14, fontSize: 13.5, color: T.slate }}>Deleted. Your profile is withdrawn from the network and no longer appears in employer search or Community.</div>}
       <div style={{ marginTop: 12, fontFamily: F.mono, fontSize: 11, color: T.slate }}>This is the entry point to your data rights. Contest, human review, and the full data-rights flow arrive in the trust and safety phase.</div>
     </Card>
     <div style={{ height: 14 }} />
@@ -1347,7 +1356,7 @@ function UpgradeModal({ open, onClose, onComplete }) {
   </Modal>;
 }
 
-function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leaveSquad, formSquad, audit, logAudit, exit, toRole }) {
+function CandidateApp({ addBuilder, removeBuilder, builders, pipeline, squads, joinSquad, leaveSquad, formSquad, audit, logAudit, exit, toRole }) {
   const [screen, setScreen] = useState("signin");
   const [profile, setProfile] = useState({ name: "", role: "", city: "", experience: "" });
   const [accommodations, setAccommodations] = useState({ extraTime: false, textOnly: false, written: false });
@@ -1391,7 +1400,7 @@ function CandidateApp({ addBuilder, builders, pipeline, squads, joinSquad, leave
     {screen === "community" && <Community builders={builders} pipeline={pipeline} squads={squads} onJoin={joinSquad} onLeave={leaveSquad} onForm={formSquad} culture={culture} />}
     {screen === "alchemist" && <ExperienceAlchemist profile={profile} onBuildCV={() => setScreen("cvbuilder")} />}
     {screen === "cvbuilder" && <CVBuilder profile={profile} saveCV={cv => setProfile(p => ({ ...p, cv }))} onBack={() => setScreen("alchemist")} />}
-    {screen === "settings" && <Settings builders={builders} onFairness={() => setScreen("fairness")} onAudit={() => setScreen("audit")} onReport={() => setScreen("report")} onEthics={() => setScreen("ethics")} logAudit={logAudit} premium={premium} onUpgrade={openUpgrade} onManage={manageSub} />}
+    {screen === "settings" && <Settings builders={builders} onDelete={removeBuilder} onFairness={() => setScreen("fairness")} onAudit={() => setScreen("audit")} onReport={() => setScreen("report")} onEthics={() => setScreen("ethics")} logAudit={logAudit} premium={premium} onUpgrade={openUpgrade} onManage={manageSub} />}
     {screen === "fairness" && <FairnessPosture onBack={() => setScreen("settings")} />}
     {screen === "audit" && <AuditTrail audit={audit} onBack={() => setScreen("settings")} />}
     {screen === "report" && <ReportIssue categories={REPORT_CATS_CANDIDATE} source="candidate" logAudit={logAudit} onBack={() => setScreen("settings")} />}
@@ -2677,6 +2686,10 @@ export default function App() {
   const [audit, setAudit] = useState([]);
   const logAudit = e => setAudit(a => [{ ...e, at: Date.now() }, ...a]);
   const addBuilder = b => setBuilders(prev => [b, ...prev]);
+  // Data deletion: remove the builder from the shared network store, so the
+  // profile stops appearing in employer search and in Community. This is what
+  // makes "delete my data" a real removal rather than a logged intention.
+  const removeBuilder = handle => setBuilders(prev => prev.filter(b => b.handle !== handle));
   const joinSquad = id => setSquads(s => s.map(x => x.id === id ? { ...x, joined: true, members: x.members + 1 } : x));
   const leaveSquad = id => setSquads(s => s.map(x => x.id === id ? { ...x, joined: false, members: Math.max(0, x.members - 1) } : x));
   const formSquad = ({ name, focus, pitch }) => setSquads(s => [{ id: "sq-" + Math.random().toString(36).slice(2, 8), name, focus, pitch, members: 1, joined: true }, ...s]);
@@ -2693,7 +2706,7 @@ export default function App() {
         <HumanReviewProvider logAudit={logAudit}>
           {view === "landing" && <div style={marketingFont}><LandingPage onSignInClick={toRole} /></div>}
           {view === "role" && <div style={marketingFont}><RoleSelectionPage onRoleSelect={r => setView(r === "builder" ? "candidate" : "employer")} onBack={() => setView("landing")} /></div>}
-          {view === "candidate" && <CandidateApp addBuilder={addBuilder} builders={builders} pipeline={pipeline} squads={squads} joinSquad={joinSquad} leaveSquad={leaveSquad} formSquad={formSquad} audit={audit} logAudit={logAudit} exit={() => setView("landing")} toRole={toRole} />}
+          {view === "candidate" && <CandidateApp addBuilder={addBuilder} removeBuilder={removeBuilder} builders={builders} pipeline={pipeline} squads={squads} joinSquad={joinSquad} leaveSquad={leaveSquad} formSquad={formSquad} audit={audit} logAudit={logAudit} exit={() => setView("landing")} toRole={toRole} />}
           {view === "employer" && <EmployerApp builders={builders} pipeline={pipeline} setPipeline={setPipeline} logAudit={logAudit} exit={() => setView("landing")} toRole={toRole} />}
         </HumanReviewProvider>
       </ToastProvider>
