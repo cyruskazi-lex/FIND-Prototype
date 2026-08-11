@@ -1768,7 +1768,10 @@ function TrajectoryForecast({ result }) {
   const withGain = (result.dimensions || []).map(d => { const weight = WEIGHTS[d.name] ?? 0.15; return { name: d.name, score: d.score, weight, gain: (100 - d.score) * weight }; });
   const forecast = withGain.length ? withGain.reduce((a, b) => (b.gain > a.gain ? b : a)) : null;
   const current = result.profileStrength;
-  const projected = forecast ? Math.round(current + (75 - forecast.score) * forecast.weight) : current;
+  // Clamp at the target: a dimension already above 75 gains nothing by reaching
+  // it, so the projection floors at the current score. Without this, a strong
+  // profile renders a negative delta styled as an improvement.
+  const projected = forecast ? Math.round(current + Math.max(0, 75 - forecast.score) * forecast.weight) : current;
   const delta = projected - current;
   const mod = forecast ? MODULES[forecast.name] : null;
   const effort = mod ? (EFFORT[mod.title] || "varies") : "";
