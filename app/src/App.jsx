@@ -136,10 +136,102 @@ const MODULES = {
 };
 
 // ---- seeded network so employer search has a pool ----
+// Demo seed switch. true opens the app on the seeded network, pipeline, company,
+// and a completed assessment, so every screen is reachable without running the
+// interview. false restores the real flow: landing, sign in, onboarding, interview.
+const DEMO_SEED = false;
+
+// A network entry carries no name, city, or photo by design. That is what the
+// employer sees, and identity stays shielded until they commit to an interview,
+// so location and experience live inside `summary` rather than as fields.
+// profileStrength and tier are derived from `dimensions` through the same
+// composite() and tierOf() the assessment uses, so a seeded profile can never
+// disagree with the disclosed weighting formula.
+const seedBuilder = b => { const ps = composite(b.dimensions); return { ...b, profileStrength: ps, tier: tierOf(ps) }; };
 const SEED_BUILDERS = [
-  { handle: "FB-2208", role: "Backend engineer", summary: "Built payment reconciliation and queue resilience for a Lagos fintech. Strong on PostgreSQL and network-loss recovery.", skills: ["Python", "PostgreSQL", "Distributed systems"], profileStrength: 88, tier: tierOf(88) },
-  { handle: "FB-4417", role: "Frontend engineer", summary: "Shipped accessible React dashboards for a Nairobi health platform on low-bandwidth networks.", skills: ["React", "TypeScript", "Accessibility"], profileStrength: 81, tier: tierOf(81) },
-  { handle: "FB-7731", role: "Data engineer", summary: "Built ETL and reporting pipelines across three African markets, owning data quality end to end.", skills: ["Airflow", "SQL", "Python"], profileStrength: 76, tier: tierOf(76) },
+  {
+    handle: "FB-2208", role: "Backend engineer", isYou: true,
+    summary: "Built payment reconciliation and queue resilience for a Lagos fintech. Strong on PostgreSQL and network-loss recovery. Four years in production payments.",
+    skills: ["Python", "PostgreSQL", "Distributed systems"],
+    dimensions: [
+      { name: "Technical depth", score: 88, rationale: "Traced a reconciliation mismatch to a retry that double-posted, and described the fix at the level of the queue guarantee rather than the symptom." },
+      { name: "Communication clarity", score: 68, rationale: "The detail is right but it arrives unordered, so a listener has to work to find the point. Answers start inside the system rather than with what was at stake." },
+      { name: "Async and remote readiness", score: 86, rationale: "Posts a written handover before going offline and names the blocker rather than only the status." },
+      { name: "Professionalism", score: 84, rationale: "Described pushing back on a rushed deploy by proposing a smaller scope instead of refusing the request." },
+      { name: "Collaboration", score: 82, rationale: "Reviews peer code regularly, but gave no example of bringing a junior engineer through a hard problem." },
+      { name: "Problem solving", score: 88, rationale: "Scoped an ambiguous task by writing down the assumptions first and confirming them before building." },
+    ],
+  },
+  {
+    handle: "FB-5590", role: "Platform engineer",
+    summary: "Runs infrastructure and on-call for a Kigali logistics platform. Cut deploy time from an hour to eight minutes and owns the incident process. Six years, three of them on call.",
+    skills: ["Kubernetes", "Terraform", "Go", "Observability"],
+    dimensions: [
+      { name: "Technical depth", score: 94, rationale: "Walked through a cascading failure from the load balancer down to a connection pool limit, with the metric that revealed each step." },
+      { name: "Communication clarity", score: 88, rationale: "Writes incident reviews that a non-engineer can follow, leading with impact before cause." },
+      { name: "Async and remote readiness", score: 95, rationale: "Built the handover rotation across three time zones and documented the escalation path so nobody waits on one person." },
+      { name: "Professionalism", score: 92, rationale: "Treats a postmortem as a system question rather than a personal one, and said so without prompting." },
+      { name: "Collaboration", score: 90, rationale: "Pairs with product engineers on their deploys instead of gatekeeping the pipeline." },
+      { name: "Problem solving", score: 92, rationale: "Reduced an ambiguous reliability goal to two measurable targets before proposing any work." },
+    ],
+  },
+  {
+    handle: "FB-4417", role: "Frontend engineer",
+    summary: "Shipped accessible React dashboards for a Nairobi health platform on low-bandwidth networks. Three years, with a year owning the design system.",
+    skills: ["React", "TypeScript", "Accessibility"],
+    dimensions: [
+      { name: "Technical depth", score: 80, rationale: "Explained how they cut a bundle to hold up on a 3G connection, though the reasoning about rendering cost stayed at a high level." },
+      { name: "Communication clarity", score: 86, rationale: "Answers are short and structured, and they check the listener has followed before moving on." },
+      { name: "Async and remote readiness", score: 78, rationale: "Comfortable working alone across a time gap, but waits to be asked for status more often than they volunteer it." },
+      { name: "Professionalism", score: 84, rationale: "Described missing a deadline by flagging it early and proposing a reduced scope." },
+      { name: "Collaboration", score: 80, rationale: "Gives careful review feedback and asks for it, with one clear example of mentoring a designer into code." },
+      { name: "Problem solving", score: 78, rationale: "Solves well inside a defined brief, with less evidence of framing a problem that arrived unframed." },
+    ],
+  },
+  {
+    handle: "FB-7731", role: "Data engineer",
+    summary: "Built ETL and reporting pipelines across three African markets, owning data quality end to end. Five years, mostly in retail analytics.",
+    skills: ["Airflow", "SQL", "Python"],
+    dimensions: [
+      { name: "Technical depth", score: 78, rationale: "Knows pipeline orchestration well and described a real backfill failure, though the answer on warehouse modelling was thin." },
+      { name: "Communication clarity", score: 72, rationale: "Accurate but dense. Tends to describe the pipeline before saying what the business problem was." },
+      { name: "Async and remote readiness", score: 74, rationale: "Works independently, but the handover example depended on a live call rather than a written note." },
+      { name: "Professionalism", score: 78, rationale: "Owned a data error that reached a report and described how they corrected the record." },
+      { name: "Collaboration", score: 76, rationale: "Works closely with analysts, with less evidence of engaging in engineering code review." },
+      { name: "Problem solving", score: 76, rationale: "Methodical on data quality, and named the check they added so the failure could not repeat silently." },
+    ],
+  },
+  {
+    handle: "FB-3164", role: "Mobile engineer",
+    summary: "Android developer for an Accra agritech app used by smallholder farmers offline. Two years, self-taught after a physics degree.",
+    skills: ["Kotlin", "Android", "Offline sync"],
+    dimensions: [
+      { name: "Technical depth", score: 68, rationale: "Solid on offline sync and conflict resolution, but has not yet worked on anything beyond a single mobile client." },
+      { name: "Communication clarity", score: 62, rationale: "Answers start in the middle of the problem, so a listener without context has to ask twice." },
+      { name: "Async and remote readiness", score: 58, rationale: "Has only worked in one time zone with a colocated team, and had no example of an offline handover." },
+      { name: "Professionalism", score: 66, rationale: "Reliable on commitments, though the disagreement example ended in going quiet rather than resolving it." },
+      { name: "Collaboration", score: 64, rationale: "Works well beside one other developer, with no experience of a formal review process." },
+      { name: "Problem solving", score: 62, rationale: "Fixes what is in front of them and has started documenting assumptions, but tends to build before scoping." },
+    ],
+  },
+].map(seedBuilder);
+
+// Seeded employer pipeline. Entries are network entries plus the two fields the
+// employer side stamps on: `fit` from search and `monthlyUsd` from the budget.
+// The fit values are what Search.run() computes for a backend-focused need.
+const seedEngagement = (handle, extra) => ({ ...SEED_BUILDERS.find(x => x.handle === handle), ...extra });
+const SEED_PIPELINE = {
+  shortlisted: [seedEngagement("FB-7731", { fit: 61, monthlyUsd: 4200 })],
+  interviewing: [seedEngagement("FB-4417", { fit: 65, monthlyUsd: 4800 })],
+  sow: [seedEngagement("FB-2208", { fit: 84, monthlyUsd: 4500 })],
+};
+
+// Seeded employers, in the exact shape of the `company` object EmployerApp holds.
+// The app models one employer session, so only the first is wired to a screen.
+const SEED_COMPANIES = [
+  { name: "Northwind Payments GmbH", domain: "northwind-payments.de", industry: "Fintech", size: "51 to 200", country: "Germany", hiringFor: "A backend engineer to own our payments reconciliation service, working async with a Berlin team." },
+  { name: "Kestrel Health", domain: "kestrelhealth.co.uk", industry: "Health technology", size: "201 to 1000", country: "United Kingdom", hiringFor: "Frontend engineers for a patient-facing platform that has to stay fast on poor connections." },
+  { name: "Atlas Freight Systems", domain: "atlasfreight.com", industry: "Logistics and supply chain", size: "1000 plus", country: "United States", hiringFor: "A data engineer to consolidate shipment reporting across regional carriers." },
 ];
 
 // Shared FIND Squads store. Lives at the app root so the employer side can read
@@ -1357,11 +1449,11 @@ function UpgradeModal({ open, onClose, onComplete }) {
 }
 
 function CandidateApp({ addBuilder, removeBuilder, builders, pipeline, squads, joinSquad, leaveSquad, formSquad, audit, logAudit, exit, toRole }) {
-  const [screen, setScreen] = useState("signin");
+  const [screen, setScreen] = useState(DEMO_SEED ? "dashboard" : "signin");
   const [profile, setProfile] = useState({ name: "", role: "", city: "", experience: "" });
   const [accommodations, setAccommodations] = useState({ extraTime: false, textOnly: false, written: false });
-  const [result, setResult] = useState(null);
-  const [points, setPoints] = useState(0);
+  const [result, setResult] = useState(DEMO_SEED ? SEED_RESULT : null);
+  const [points, setPoints] = useState(DEMO_SEED ? 120 : 0);
   const [culture, setCulture] = useState(null); // best Culture Shock Simulator score
   const [premium, setPremium] = useState({ isPremium: false, premiumSince: null });
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -1644,6 +1736,27 @@ const INTERVIEW_SCRIPT = [
   { id: "q4", video: q4Video, text: "Tell me about a time you were given a task without clear instructions. How did you decide what to build?" },
   { id: "q5", video: q5Video, text: "Describe the hardest technical problem you have solved. How did you find the root cause, and what did you change?" },
 ];
+
+// Seeded assessment for the demo builder. Derived from their own network entry,
+// so the dashboard, the trajectory forecast, and the employer search result all
+// read the same numbers. The transcript is what the evidence panel shows.
+const SEED_ANSWERS = [
+  "Our operations lead kept asking why the daily totals moved. I stopped explaining the queue and started with the money. I showed her two rows of the ledger, one correct and one double posted, and said this is the same payment counted twice. Once she could see it in her own report she told me which merchants to check first, and that is how we found the pattern.",
+  "My manager wanted a hotfix straight to production on a Friday. I said I understood the urgency and asked for two hours to add a check that would tell us if it made things worse. He agreed. The check caught a bad assumption before we shipped, so we deployed on Saturday morning with a smaller change instead.",
+  "I write the handover before I log off, not after. It says what I finished, what is half done and where the branch is, and the one thing I need from them. If someone is blocked on me I say when I will be back rather than leaving it open. My colleague in Berlin has never had to wait a full day for an answer.",
+  "I was asked to build a reporting export with no spec. I wrote down five assumptions about the columns, the date range, and who would read it, sent them in a message, and started on the parts nobody could disagree with. Two assumptions came back wrong, which cost me an afternoon instead of a week.",
+  "Reconciliation was off by small amounts that never repeated. I stopped guessing and logged every retry with its idempotency key. The retries were firing on a network timeout even though the write had already committed, so the same payment posted twice. I made the write idempotent on the key and added a check that fails loudly instead of silently correcting.",
+];
+const SEED_RESULT = (() => {
+  const me = SEED_BUILDERS.find(b => b.isYou);
+  return {
+    dimensions: me.dimensions,
+    profileStrength: me.profileStrength,
+    tier: me.tier,
+    weakest: [...me.dimensions].sort((a, b) => a.score - b.score)[0],
+    transcript: INTERVIEW_SCRIPT.map((q, i) => ({ q: q.text, a: SEED_ANSWERS[i] })),
+  };
+})();
 
 // Zuri on camera, with a soft pulsing ring around the frame while the clip
 // plays (the speaking cue at Level 1 — no lip-sync). A click precedes every
@@ -2137,9 +2250,9 @@ function EmpDashboard({ company, onEngage }) {
 }
 
 function EmployerApp({ builders, pipeline, setPipeline, logAudit, exit, toRole }) {
-  const [screen, setScreen] = useState("welcome");
+  const [screen, setScreen] = useState(DEMO_SEED ? "app" : "welcome");
   const [tab, setTab] = useState("dashboard");
-  const [company, setCompany] = useState({ name: "", domain: "", industry: "", size: "", country: "", hiringFor: "" });
+  const [company, setCompany] = useState(DEMO_SEED ? SEED_COMPANIES[0] : { name: "", domain: "", industry: "", size: "", country: "", hiringFor: "" });
   const [active, setActive] = useState(null); const [sow, setSow] = useState(null);
   const toast = useToast();
   const inApp = screen === "app";
@@ -2684,7 +2797,7 @@ function Shell({ role, exit, nav, active, onNav, children, showZuri, premiumBadg
 export default function App() {
   const [view, setView] = useState("landing");
   const [builders, setBuilders] = useState(SEED_BUILDERS);
-  const [pipeline, setPipeline] = useState({ shortlisted: [], interviewing: [], sow: [] });
+  const [pipeline, setPipeline] = useState(DEMO_SEED ? SEED_PIPELINE : { shortlisted: [], interviewing: [], sow: [] });
   const [squads, setSquads] = useState(SEED_SQUADS);
   const [audit, setAudit] = useState([]);
   const logAudit = e => setAudit(a => [{ ...e, at: Date.now() }, ...a]);
