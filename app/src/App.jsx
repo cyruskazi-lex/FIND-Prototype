@@ -680,7 +680,7 @@ function EthicsPage({ onBack }) {
         <Li>Telos reads your experience and your answers, then scores six dimensions from 0 to 100, each with a written reason you can see.</Li>
         <Li>Your Profile Strength is a weighted average of those scores, computed by a fixed formula.</Li>
         <Li>Telos uses a graph-based reasoning model to trace how your answers connect to enterprise readiness.</Li>
-        <Li>A score is a starting point, not a verdict. You can retake the interview, contest a score, or ask for a human.</Li>
+        <Li>A score is a starting point, not a verdict. You can contest a score or ask for a human to review it.</Li>
       </ul>
     </Section>
 
@@ -781,12 +781,11 @@ function FairnessPosture({ onBack }) {
     <Card>
       <Label>If you believe an assessment was unfair</Label>
       <ul style={ul}>
-        <Li>Retake the interview. Scores are a starting point, so you can try again.</Li>
+        <Li>Contest a specific dimension and say why, from your growth dashboard. Your score stays as it is, marked under review, until a person resolves it.</Li>
+        <Li>Request a human to review any automated decision, using the link beside any score.</Li>
         <Li>Export or delete your assessment and data from your Settings data vault.</Li>
-        <Li>Contest a specific dimension and say why. Arriving in the trust and safety phase.</Li>
-        <Li>Request a human to review any automated decision. Arriving in the trust and safety phase.</Li>
       </ul>
-      <div style={{ marginTop: 12, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Contest and human review are part of the trust and safety phase and are not live yet. Retake and data export or delete are available now.</div>
+      <div style={{ marginTop: 12, fontFamily: F.mono, fontSize: 11, color: T.slate }}>Contest, human review, and data export or delete are available now. Retaking the interview is not built yet, so a score cannot yet be replaced by a fresh assessment.</div>
     </Card>
     <div style={{ height: 30 }} />
   </div></Scroll>;
@@ -1536,7 +1535,7 @@ function AssessInfo({ onOptIn, onOptOut, onBack, accommodations, setAccommodatio
       <Li>Telos reads your experience and answers, then scores each dimension 0 to 100 with a written reason you will see.</Li>
       <Li>Your Profile Strength is a weighted average computed by the fixed formula above.</Li>
       <Li>Telos uses a graph-based reasoning model to trace how your answers connect to enterprise readiness.</Li>
-      <Li>Scores are a starting point, not a verdict. You can retake the interview.</Li>
+      <Li>Scores are a starting point, not a verdict. You can contest a score or ask for a human to review it.</Li>
     </ul></Card>
     <div style={{ height: 14 }} />
     <Card><Label>Accommodations</Label>
