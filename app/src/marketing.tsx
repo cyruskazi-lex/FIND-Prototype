@@ -25,8 +25,8 @@ const TOKENS = `
   --fu-mono:'IBM Plex Mono',monospace;
 }`;
 
-// The app shell wraps these views in IBM Plex Sans. The contract sets Inter as
-// the body face, so each exported view sets its own font on its root element.
+// Inter is the body face app-wide per the contract. Each exported view states it
+// on its own root so these screens stand up independently of the app shell.
 const rootStyle = { fontFamily: 'var(--fu-body)' };
 const displayStyle = { fontFamily: 'var(--fu-display)' };
 const monoStyle = { fontFamily: 'var(--fu-mono)' };

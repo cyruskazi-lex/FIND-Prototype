@@ -15,16 +15,33 @@ import { LandingPage, RoleSelectionPage, AuthFormPage } from "./marketing";
 // Zuri is the agent. Telos is the data and impact engine underneath.
 // ============================================================
 
+// The token map. This is the single definition point for colour, per
+// DESIGN_CONTRACT.md section 3, and the only place a hex literal belongs. The
+// :root custom properties below are generated from it, so the CSS rules and the
+// inline styles can never drift apart.
 const T = {
   paper: "#ECEFF2", surface: "#FFFFFF", mute: "#E3E8EB", line: "#D7DEE3",
   ink: "#0C1A26", slate: "#4A5C68", slateLg: "#5E6E7A", emerald: "#066E5A", vault: "#05564A",
   brass: "#B08A2E", onAccent: "#F4F7F8", alert: "#A8431F",
+  // Dark chrome, all derived from ink. The header, side nav, bottom nav, footer,
+  // and toasts sit on ink, so they need their own on-surface set.
+  inkLine: "#12222E", inkBorder: "#24343F",
+  onInk: "#EEF3F8", onInkDim: "#9FB0BC", onInkMute: "#8BA0AD",
+  brassLight: "#D6B25A", brassDark: "#6B551F",
 };
 // slate is the AA-passing secondary text on paper for small (<16px) text.
 // slateLg keeps the softer brand tone for labels and larger (>=16px) text.
 const F = { disp: "'Hanken Grotesk', sans-serif", body: "'Inter', sans-serif", mono: "'IBM Plex Mono', monospace" };
 const FONTS = `
-@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+:root{
+  --fu-paper:${T.paper}; --fu-surface:${T.surface}; --fu-mute:${T.mute}; --fu-line:${T.line};
+  --fu-ink:${T.ink}; --fu-slate:${T.slate}; --fu-slate-lg:${T.slateLg};
+  --fu-emerald:${T.emerald}; --fu-vault:${T.vault}; --fu-brass:${T.brass};
+  --fu-alert:${T.alert}; --fu-on-accent:${T.onAccent};
+  --fu-ink-line:${T.inkLine}; --fu-ink-border:${T.inkBorder};
+  --fu-on-ink:${T.onInk}; --fu-on-ink-dim:${T.onInkDim}; --fu-on-ink-mute:${T.onInkMute};
+}
 *{box-sizing:border-box}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
@@ -37,42 +54,42 @@ textarea,input{font-family:'Inter',sans-serif}
 .split{display:grid;grid-template-columns:1.3fr 1fr;gap:16px}
 .doors{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:760px){.row2,.dash,.mods,.kanban,.split,.doors{grid-template-columns:1fr}}
-button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #066E5A;outline-offset:2px}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--fu-emerald);outline-offset:2px}
 @keyframes zuriPulse{0%{box-shadow:0 0 0 2px rgba(6,110,90,0.55),0 0 0 5px rgba(6,110,90,0.16)}50%{box-shadow:0 0 0 3px rgba(6,110,90,0.30),0 0 0 15px rgba(6,110,90,0)}100%{box-shadow:0 0 0 2px rgba(6,110,90,0.55),0 0 0 5px rgba(6,110,90,0.16)}}
 @keyframes toastin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 @keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
 /* Carbon shell: dark header + dark left side nav, one shared component */
 .fshell{height:100dvh;display:grid;grid-template-columns:248px 1fr;grid-template-rows:52px 1fr auto;grid-template-areas:"head head" "side main" "foot foot"}
 .fshell.noNav{grid-template-columns:1fr;grid-template-areas:"head" "main" "foot"}
-.fhead{grid-area:head;display:flex;align-items:center;gap:12px;background:#0C1A26;color:#EEF3F8;padding:0 16px}
-.fbrand{font-family:'Hanken Grotesk',sans-serif;font-weight:800;font-size:18px;letter-spacing:3px;background:none;border:none;color:#fff;cursor:pointer;padding:0}
-.fside{grid-area:side;background:#0C1A26;border-right:1px solid #12222E;display:flex;flex-direction:column;padding:10px 0;overflow-y:auto}
-.fnav{text-align:left;background:none;border:none;border-left:3px solid transparent;color:#9FB0BC;font-family:'Inter',sans-serif;font-size:13.5px;padding:11px 18px;cursor:pointer;white-space:nowrap}
-.fnav:hover{background:#12222E;color:#fff}
-.fnav.on{background:#12222E;border-left-color:#066E5A;color:#fff;font-weight:600}
-.fmain{grid-area:main;min-height:0;overflow-y:auto;background:#F2F4F7}
-.ffoot{grid-area:foot;background:#0C1A26;color:#8BA0AD;font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:7px 16px;text-align:center;border-top:1px solid #12222E}
+.fhead{grid-area:head;display:flex;align-items:center;gap:12px;background:var(--fu-ink);color:var(--fu-on-ink);padding:0 16px}
+.fbrand{font-family:'Hanken Grotesk',sans-serif;font-weight:800;font-size:18px;letter-spacing:3px;background:none;border:none;color:var(--fu-surface);cursor:pointer;padding:0}
+.fside{grid-area:side;background:var(--fu-ink);border-right:1px solid var(--fu-ink-line);display:flex;flex-direction:column;padding:10px 0;overflow-y:auto}
+.fnav{text-align:left;background:none;border:none;border-left:3px solid transparent;color:var(--fu-on-ink-dim);font-family:'Inter',sans-serif;font-size:13.5px;padding:11px 18px;cursor:pointer;white-space:nowrap}
+.fnav:hover{background:var(--fu-ink-line);color:var(--fu-surface)}
+.fnav.on{background:var(--fu-ink-line);border-left-color:var(--fu-emerald);color:var(--fu-surface);font-weight:600}
+.fmain{grid-area:main;min-height:0;overflow-y:auto;background:var(--fu-paper)}
+.ffoot{grid-area:foot;background:var(--fu-ink);color:var(--fu-on-ink-mute);font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:7px 16px;text-align:center;border-top:1px solid var(--fu-ink-line)}
 .fbot{display:none}
 .ftoasts{position:fixed;top:64px;right:16px;z-index:70;display:flex;flex-direction:column;gap:8px;max-width:calc(100vw - 32px)}
-.ftoast{background:#0C1A26;color:#EEF3F8;border-left:3px solid #066E5A;border-radius:6px;padding:10px 14px;font-size:13px;box-shadow:0 8px 24px rgba(12,26,38,0.28);animation:toastin .25s ease}
+.ftoast{background:var(--fu-ink);color:var(--fu-on-ink);border-left:3px solid var(--fu-emerald);border-radius:6px;padding:10px 14px;font-size:13px;box-shadow:0 8px 24px rgba(12,26,38,0.28);animation:toastin .25s ease}
 .fdock{bottom:20px}
 @media(max-width:880px){.fdock{bottom:76px}}
 @media(max-width:880px){
   .fshell{grid-template-columns:1fr;grid-template-rows:52px 1fr auto;grid-template-areas:"head" "main" "foot"}
   .fshell.hasNav{grid-template-rows:52px 1fr 56px auto;grid-template-areas:"head" "main" "bot" "foot"}
   .fside{display:none}
-  .fbot{grid-area:bot;display:flex;overflow-x:auto;background:#0C1A26;border-top:1px solid #12222E}
-  .fbotItem{flex:0 0 auto;background:none;border:none;border-top:2px solid transparent;color:#9FB0BC;font-family:'Inter',sans-serif;font-size:11px;padding:8px 13px;cursor:pointer;white-space:nowrap}
-  .fbotItem.on{color:#fff;border-top-color:#066E5A}
+  .fbot{grid-area:bot;display:flex;overflow-x:auto;background:var(--fu-ink);border-top:1px solid var(--fu-ink-line)}
+  .fbotItem{flex:0 0 auto;background:none;border:none;border-top:2px solid transparent;color:var(--fu-on-ink-dim);font-family:'Inter',sans-serif;font-size:11px;padding:8px 13px;cursor:pointer;white-space:nowrap}
+  .fbotItem.on{color:var(--fu-surface);border-top-color:var(--fu-emerald)}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 @media print {
   .fhead,.fside,.fbot,.fdock,.ftoasts,.noprint{display:none!important}
   .fshell{display:block!important;height:auto!important}
   .fmain{overflow:visible!important;height:auto!important;padding:0!important}
-  html,body,.fshell,.fmain{background:#fff!important}
+  html,body,.fshell,.fmain{background:var(--fu-surface)!important}
   #cvprint{max-width:none!important}
-  #cvprint input,#cvprint textarea{border:none!important;padding:0!important;background:#fff!important;color:#0C1A26!important;font-size:13px!important}
+  #cvprint input,#cvprint textarea{border:none!important;padding:0!important;background:var(--fu-surface)!important;color:var(--fu-ink)!important;font-size:13px!important}
   .screen-only{display:none!important}
   .print-only{display:block!important}
 }
@@ -278,14 +295,14 @@ function Modal({ titleId, onClose, children }) {
   }, [onClose]);
   return <div onMouseDown={onClose} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(12,26,38,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
     <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} onMouseDown={e => e.stopPropagation()}
-      style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, width: 460, maxWidth: "100%", maxHeight: "85vh", overflowY: "auto", padding: 22, boxShadow: "0 20px 50px rgba(12,26,38,0.28)" }}>
+      style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, width: 460, maxWidth: "100%", maxHeight: "85vh", overflowY: "auto", padding: 22, boxShadow: "0 20px 50px rgba(12,26,38,0.28)" }}>
       {children}
     </div>
   </div>;
 }
 const Hint = ({ show, children }) => show ? <div role="status" style={{ marginTop: 8, fontSize: 12.5, color: T.slate }}>{children}</div> : null;
 const Card = ({ children, accent, pad }) => <div style={{ background: T.surface, border: `1px solid ${accent || T.line}`, borderRadius: 12, padding: pad ?? 22 }}>{children}</div>;
-const Li = ({ children }) => <li style={{ display: "flex", gap: 9 }}><span style={{ color: T.emerald }}>.</span><span style={{ color: T.slate }}>{children}</span></li>;
+const Li = ({ children }) => <li style={{ display: "flex", gap: 9 }}><span style={{ color: T.slate }}>.</span><span style={{ color: T.slate }}>{children}</span></li>;
 function Field({ label, value, onChange, placeholder, rows }) {
   const common = { width: "100%", marginTop: 7, background: T.paper, color: T.ink, border: `1px solid ${T.line}`, borderRadius: 8, padding: 11, fontSize: 14, lineHeight: 1.5 };
   return <div style={{ marginBottom: 14 }}><Label>{label}</Label>{rows ? <textarea rows={rows} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} style={{ ...common, resize: "vertical" }} /> : <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} style={common} />}</div>;
@@ -336,13 +353,13 @@ function NotificationBell() {
   const history = useToastHistory();
   const [open, setOpen] = useState(false);
   return <>
-    <button onClick={() => setOpen(o => !o)} aria-label="Notification history" aria-expanded={open} style={{ position: "relative", background: "transparent", border: "none", cursor: "pointer", color: "#EEF3F8", padding: 6, display: "inline-flex", alignItems: "center" }}>
+    <button onClick={() => setOpen(o => !o)} aria-label="Notification history" aria-expanded={open} style={{ position: "relative", background: "transparent", border: "none", cursor: "pointer", color: T.onInk, padding: 6, display: "inline-flex", alignItems: "center" }}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
       {history.length > 0 && <span aria-hidden="true" style={{ position: "absolute", top: 3, right: 3, width: 7, height: 7, borderRadius: "50%", background: T.emerald }} />}
     </button>
     {open && <>
       <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(12,26,38,0.35)" }} />
-      <aside role="dialog" aria-label="Notification history" style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 320, maxWidth: "90vw", zIndex: 91, background: T.surface, borderLeft: `1px solid ${T.line}`, boxShadow: "-8px 0 30px rgba(12,26,38,0.2)", padding: 18, overflowY: "auto", animation: "slideIn .22s ease" }}>
+      <aside role="dialog" aria-label="Notification history" style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 320, maxWidth: "90vw", zIndex: 91, background: T.surface, borderLeft: `1px solid ${T.line}`, padding: 18, overflowY: "auto", animation: "slideIn .22s ease" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 16 }}>Notifications</div>
           <button onClick={() => setOpen(false)} aria-label="Close notification history" style={{ background: "transparent", border: "none", cursor: "pointer", color: T.slateLg, fontSize: 20, lineHeight: 1, padding: 4 }}>×</button>
@@ -457,7 +474,7 @@ function Applications({ builders, pipeline }) {
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 30, color: T.emerald, lineHeight: 1 }}>{me.profileStrength}</div>
-            <div><span style={{ display: "inline-block", marginTop: 6, fontFamily: F.mono, fontSize: 11, color: T.onAccent, background: me.tier.color, borderRadius: 5, padding: "3px 10px" }}>{me.tier.name} tier</span></div>
+            <div><span style={{ display: "inline-block", marginTop: 6, fontFamily: F.mono, fontSize: 11, color: T.ink, background: "transparent", border: `1px solid ${me.tier.color}`, borderRadius: 5, padding: "3px 10px" }}>{me.tier.name} tier</span></div>
           </div>
         </div>
       </Card>
@@ -478,7 +495,7 @@ function Applications({ builders, pipeline }) {
                   <div style={{ fontSize: 13.5, color: T.slate, marginTop: 4 }}>{s.note}</div>
                   {e.entry.monthlyUsd ? <div style={{ fontFamily: F.mono, fontSize: 12, color: T.slate, marginTop: 6 }}>{usd(e.entry.monthlyUsd)} / month</div> : null}
                 </div>
-                <span style={{ fontFamily: F.mono, fontSize: 11, color: T.onAccent, background: s.color, borderRadius: 5, padding: "4px 10px", whiteSpace: "nowrap" }}>{s.label}</span>
+                <span style={{ fontFamily: F.mono, fontSize: 11, color: T.ink, background: "transparent", border: `1px solid ${s.color}`, borderRadius: 5, padding: "4px 10px", whiteSpace: "nowrap" }}>{s.label}</span>
               </div>
             </Card>; })}
           </div>}
@@ -654,7 +671,7 @@ function Community({ builders, pipeline, squads, onJoin, onLeave, onForm, cultur
         : <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
           {peers.map((p, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, padding: "11px 14px" }}>
             <div style={{ fontSize: 14 }}><b>{p.handle}</b> <span style={{ color: T.slate }}>. {p.role} {activity(p)}</span></div>
-            {p.tier && <span style={{ fontFamily: F.mono, fontSize: 10.5, color: T.onAccent, background: p.tier.color, borderRadius: 5, padding: "3px 9px", whiteSpace: "nowrap" }}>{p.tier.name}</span>}
+            {p.tier && <span style={{ fontFamily: F.mono, fontSize: 10.5, color: T.ink, background: "transparent", border: `1px solid ${p.tier.color}`, borderRadius: 5, padding: "3px 9px", whiteSpace: "nowrap" }}>{p.tier.name}</span>}
           </div>)}
         </div>}
     </div>
@@ -671,7 +688,7 @@ const CHANNELS = [{ id: "whatsapp", name: "WhatsApp" }, { id: "sms", name: "SMS"
 
 const Toggle = ({ on, onClick, label }) => <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={onClick}
   style={{ width: 44, height: 24, borderRadius: 12, border: `1px solid ${on ? T.emerald : T.line}`, background: on ? T.emerald : T.mute, position: "relative", cursor: "pointer", padding: 0, flexShrink: 0 }}>
-  <span aria-hidden="true" style={{ position: "absolute", top: 2, left: on ? 22 : 2, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left .15s" }} />
+  <span aria-hidden="true" style={{ position: "absolute", top: 2, left: on ? 22 : 2, width: 18, height: 18, borderRadius: "50%", background: T.surface, transition: "left .15s" }} />
 </button>;
 
 // ---- Decision audit trail (candidate). NO MODEL ----
@@ -1587,8 +1604,8 @@ function PitchRecorder() {
       {phase === "recorded"
         ? <video ref={previewRef} controls playsInline style={vid} />
         : <video ref={liveRef} muted playsInline autoPlay style={{ ...vid, opacity: phase === "recording" ? 1 : 0.85 }} />}
-      {phase === "idle" && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#9FB0BC", fontSize: 13, fontFamily: F.mono, textAlign: "center", padding: 16 }}>Your camera preview appears here when you start</div>}
-      {phase === "recording" && <div style={{ position: "absolute", top: 10, right: 10, display: "flex", alignItems: "center", gap: 7, background: "rgba(12,26,38,0.72)", color: "#fff", borderRadius: 20, padding: "5px 11px", fontFamily: F.mono, fontSize: 12 }}><span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", background: T.alert }} />{clock}</div>}
+      {phase === "idle" && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: T.onInkDim, fontSize: 13, fontFamily: F.mono, textAlign: "center", padding: 16 }}>Your camera preview appears here when you start</div>}
+      {phase === "recording" && <div style={{ position: "absolute", top: 10, right: 10, display: "flex", alignItems: "center", gap: 7, background: "rgba(12,26,38,0.72)", color: T.surface, borderRadius: 12, padding: "5px 11px", fontFamily: F.mono, fontSize: 12 }}><span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", background: T.alert }} />{clock}</div>}
     </div>
     <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
       {phase === "idle" && <Btn small onClick={start}>Start recording</Btn>}
@@ -1767,8 +1784,8 @@ function VideoStage({ src, autoPlay, playing, onPlay, onStop, muted }) {
   return <div style={{ position: "relative", width: "100%", maxWidth: 420 }}>
     <video ref={ref} src={src} playsInline controls={!muted} muted={muted} preload="metadata" aria-label="Zuri speaking"
       onPlay={onPlay} onPlaying={onPlay} onEnded={onStop} onPause={onStop}
-      style={{ width: "100%", borderRadius: 16, display: "block", background: T.ink, border: `1px solid ${T.line}` }} />
-    {playing && <span aria-hidden="true" style={{ position: "absolute", inset: -3, borderRadius: 18, pointerEvents: "none", animation: "zuriPulse 1.6s ease-in-out infinite" }} />}
+      style={{ width: "100%", borderRadius: 12, display: "block", background: T.ink, border: `1px solid ${T.line}` }} />
+    {playing && <span aria-hidden="true" style={{ position: "absolute", inset: -3, borderRadius: 12, pointerEvents: "none", animation: "zuriPulse 1.6s ease-in-out infinite" }} />}
   </div>;
 }
 
@@ -1916,7 +1933,7 @@ function TrajectoryForecast({ result }) {
       <div style={{ background: T.paper, border: `1px solid ${T.line}`, borderRadius: 8, padding: 12 }}>
         <div style={{ fontFamily: F.mono, fontSize: 10.5, color: T.slateLg, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 4 }}>Forecast intervention</div>
         <div style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 16 }}>{forecast.name} <span style={{ color: T.slate, fontWeight: 400, fontSize: 13 }}>at {forecast.score}</span></div>
-        <div style={{ fontSize: 13, color: T.slate, marginTop: 4 }}>Module: {mod ? mod.title : "—"} . est. {effort}</div>
+        <div style={{ fontSize: 13, color: T.slate, marginTop: 4 }}>Module: {mod ? mod.title : "not mapped"} . est. {effort}</div>
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
         <span style={{ fontSize: 13.5, color: T.slate }}>Projected if it reaches 75</span>
@@ -1956,7 +1973,7 @@ function Dashboard({ profile, result, onUpskill, published, audit, logAudit, cul
     {!premium?.isPremium && <div style={{ marginBottom: 16, background: "rgba(176,138,46,0.08)", border: `1px solid ${T.brass}`, borderRadius: 10, padding: "11px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}><div style={{ fontSize: 13.5, color: T.ink }}><b>FIND Premium Pro.</b> Priority matching, zero-commission escrow, unlimited upskilling, and more for {PREMIUM_PRICE}.</div><Btn small onClick={onUpgrade}>Upgrade</Btn></div>}
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}>
       <div><Eyebrow>Growth dashboard</Eyebrow><h2 style={{ fontFamily: F.disp, fontWeight: 700, fontSize: 26, margin: "6px 0 2px" }}>{profile.name || "Your"} profile</h2><div style={{ color: T.slate, fontSize: 14 }}>{profile.role} . {profile.city || "location hidden"}</div>{culture != null && <div style={{ marginTop: 8 }}><span style={{ fontFamily: F.mono, fontSize: 11.5, color: T.emerald, border: `1px solid ${T.emerald}`, borderRadius: 6, padding: "3px 9px" }}>✓ Culture Shock Simulator {culture}/100</span></div>}</div>
-      <div style={{ textAlign: "right" }}><div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 46, color: T.emerald, lineHeight: 1 }}>{result.profileStrength}</div><button onClick={() => setShowCalc(s => !s)} style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline" }}>profile strength . how is this calculated</button><div><span style={{ display: "inline-block", marginTop: 6, fontFamily: F.mono, fontSize: 12, color: T.onAccent, background: tier.color, borderRadius: 5, padding: "3px 10px" }}>{tier.name} tier</span></div>{premium?.isPremium && <div style={{ marginTop: 6, fontFamily: F.mono, fontSize: 11, color: T.brass }}>Premium member since {premium.premiumSince}</div>}<div style={{ marginTop: 6, display: "flex", gap: 14, justifyContent: "flex-end", flexWrap: "wrap" }}><ReviewLink what={`Profile Strength: ${result.profileStrength}`} /><button onClick={openContest} style={{ fontFamily: F.mono, fontSize: 11, color: T.brass, background: "transparent", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", whiteSpace: "nowrap" }}>Contest this score</button></div></div>
+      <div style={{ textAlign: "right" }}><div style={{ fontFamily: F.disp, fontWeight: 800, fontSize: 46, color: T.emerald, lineHeight: 1 }}>{result.profileStrength}</div><button onClick={() => setShowCalc(s => !s)} style={{ fontFamily: F.mono, fontSize: 11, color: T.slate, background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline" }}>profile strength . how is this calculated</button><div><span style={{ display: "inline-block", marginTop: 6, fontFamily: F.mono, fontSize: 12, color: T.ink, background: "transparent", border: `1px solid ${tier.color}`, borderRadius: 5, padding: "3px 10px" }}>{tier.name} tier</span></div>{premium?.isPremium && <div style={{ marginTop: 6, fontFamily: F.mono, fontSize: 11, color: T.brass }}>Premium member since {premium.premiumSince}</div>}<div style={{ marginTop: 6, display: "flex", gap: 14, justifyContent: "flex-end", flexWrap: "wrap" }}><ReviewLink what={`Profile Strength: ${result.profileStrength}`} /><button onClick={openContest} style={{ fontFamily: F.mono, fontSize: 11, color: T.brass, background: "transparent", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", whiteSpace: "nowrap" }}>Contest this score</button></div></div>
     </div>
     {showCalc && <div style={{ marginTop: 14 }}><Card pad={16} accent={T.brass}><Label>How this was calculated</Label><p style={{ fontSize: 13.5, color: T.slate, margin: "8px 0 10px" }}>Telos assessed each dimension 0 to 100 from your interview and experience. Profile Strength is the weighted average.</p><div style={{ display: "grid", gap: 5 }}>{result.dimensions.map((d, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", fontFamily: F.mono, fontSize: 12, color: T.slate }}><span>{d.name}</span><span>{d.score} × {WEIGHTS[d.name]?.toFixed(2)}</span></div>)}<div style={{ display: "flex", justifyContent: "space-between", fontFamily: F.mono, fontSize: 12.5, color: T.emerald, borderTop: `1px solid ${T.mute}`, paddingTop: 6, marginTop: 2 }}><span>weighted average</span><span>{result.profileStrength}</span></div></div></Card></div>}
     <div className="dash" style={{ marginTop: 18 }}>
@@ -2736,13 +2753,13 @@ function ZuriDock({ role }) {
 
   if (!open) {
     return <button onClick={() => setOpen(true)} aria-label="Open Zuri, your copilot" className="fdock"
-      style={{ position: "fixed", right: 20, zIndex: 50, width: 64, height: 64, borderRadius: "50%", border: `1px solid ${T.line}`, background: T.surface, boxShadow: "0 6px 20px rgba(12,26,38,0.18)", cursor: "pointer", padding: 4, display: "grid", placeItems: "center" }}>
+      style={{ position: "fixed", right: 20, zIndex: 50, width: 64, height: 64, borderRadius: "50%", border: `1px solid ${T.line}`, background: T.surface, cursor: "pointer", padding: 4, display: "grid", placeItems: "center" }}>
       <ZuriPhoto size={54} />
     </button>;
   }
 
   return <div role="dialog" aria-label="Zuri, your copilot" onKeyDown={e => { if (e.key === "Escape") setOpen(false); }} className="fdock"
-    style={{ position: "fixed", right: 20, zIndex: 50, width: 340, maxWidth: "calc(100vw - 40px)", maxHeight: "min(70vh, 560px)", display: "flex", flexDirection: "column", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 16, boxShadow: "0 12px 36px rgba(12,26,38,0.22)", overflow: "hidden" }}>
+    style={{ position: "fixed", right: 20, zIndex: 50, width: 340, maxWidth: "calc(100vw - 40px)", maxHeight: "min(70vh, 560px)", display: "flex", flexDirection: "column", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, overflow: "hidden" }}>
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderBottom: `1px solid ${T.line}` }}>
       <ZuriPhoto size={40} />
       <div style={{ flex: 1 }}>
@@ -2772,19 +2789,19 @@ function Shell({ role, exit, nav, active, onNav, children, showZuri, premiumBadg
   return <div className={"fshell " + (hasNav ? "hasNav" : "noNav")}>
     <header className="fhead">
       <button onClick={exit} className="fbrand" aria-label="Fumana home">FUMANA</button>
-      <span style={{ color: "#8BA0AD", fontSize: 12 }}>{role} portal</span>
+      <span style={{ color: T.onInkMute, fontSize: 12 }}>{role} portal</span>
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
         <NotificationBell />
-        <button onClick={exit} style={{ fontFamily: F.mono, fontSize: 11, color: "#9FB0BC", background: "transparent", border: "1px solid #24343F", borderRadius: 6, padding: "5px 10px", cursor: "pointer" }}>switch role</button>
+        <button onClick={exit} style={{ fontFamily: F.mono, fontSize: 11, color: T.onInkDim, background: "transparent", border: `1px solid ${T.inkBorder}`, borderRadius: 6, padding: "5px 10px", cursor: "pointer" }}>switch role</button>
       </div>
     </header>
     {hasNav && <nav className="fside" aria-label={`${role} navigation`}>
-      {premiumBadge && <div style={{ margin: "2px 14px 8px", alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 5, fontFamily: F.mono, fontSize: 10, color: "#D6B25A", border: "1px solid #6B551F", borderRadius: 5, padding: "3px 8px" }}>FIND Premium Pro</div>}
-      {nav.map(([k, lbl]) => <button key={k} className={"fnav" + (active === k ? " on" : "")} aria-current={active === k ? "page" : undefined} onClick={() => onNav(k)}>{lbl}{locked && locked.includes(k) && <span style={{ marginLeft: 6, color: "#B08A2E", display: "inline-flex", verticalAlign: "middle" }}><LockIcon size={10} /></span>}</button>)}
+      {premiumBadge && <div style={{ margin: "2px 14px 8px", alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 5, fontFamily: F.mono, fontSize: 10, color: T.brassLight, border: `1px solid ${T.brassDark}`, borderRadius: 5, padding: "3px 8px" }}>FIND Premium Pro</div>}
+      {nav.map(([k, lbl]) => <button key={k} className={"fnav" + (active === k ? " on" : "")} aria-current={active === k ? "page" : undefined} onClick={() => onNav(k)}>{lbl}{locked && locked.includes(k) && <span style={{ marginLeft: 6, color: T.brass, display: "inline-flex", verticalAlign: "middle" }}><LockIcon size={10} /></span>}</button>)}
     </nav>}
     <main className="fmain">{children}</main>
     {hasNav && <nav className="fbot" aria-label={`${role} navigation`}>
-      {nav.map(([k, lbl]) => <button key={k} className={"fbotItem" + (active === k ? " on" : "")} aria-current={active === k ? "page" : undefined} onClick={() => onNav(k)}>{lbl}{locked && locked.includes(k) && <span style={{ marginLeft: 4, color: "#B08A2E", display: "inline-flex", verticalAlign: "middle" }}><LockIcon size={9} /></span>}</button>)}
+      {nav.map(([k, lbl]) => <button key={k} className={"fbotItem" + (active === k ? " on" : "")} aria-current={active === k ? "page" : undefined} onClick={() => onNav(k)}>{lbl}{locked && locked.includes(k) && <span style={{ marginLeft: 4, color: T.brass, display: "inline-flex", verticalAlign: "middle" }}><LockIcon size={9} /></span>}</button>)}
     </nav>}
     <footer className="ffoot">&copy; FIND Services Limited. Powered by Telos. Designed by Lexington Advisory Group.</footer>
     {showZuri && <ZuriDock role={role} />}
@@ -2812,9 +2829,9 @@ export default function App() {
   const toRole = () => setView("role");
   const [fontSize, setFontSize] = useState("default");
   const scale = FONT_SCALE[fontSize] || 1;
-  // The marketing views (landing, role selection) are Tailwind-styled and use
-  // IBM Plex Sans as their base font, separate from the inline-styled app shell.
-  const marketingFont = { fontFamily: "'IBM Plex Sans', sans-serif" };
+  // The marketing views (landing, role selection) are Tailwind-styled but share
+  // the body face with the inline-styled app shell, per DESIGN_CONTRACT.md.
+  const marketingFont = { fontFamily: F.body };
   return <div style={{ background: T.paper, minHeight: "100vh", color: T.ink, fontFamily: F.body, zoom: scale, "--base-font-size": `${(14 * scale).toFixed(1)}px` }}>
     <style>{FONTS}</style>
     <FontSizeCtx.Provider value={{ size: fontSize, setSize: setFontSize }}>
