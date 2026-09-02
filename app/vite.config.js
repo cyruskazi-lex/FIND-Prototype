@@ -9,7 +9,14 @@ export default defineConfig(({ mode }) => {
   // import.meta.env.VITE_* is exposed to the browser bundle, so the provider
   // keys passed into the endpoints below never reach the client.
   const env = loadEnv(mode, process.cwd(), '')
+  const repositoryName = process.env.GITHUB_REPOSITORY?.split('/')[1]
+  const pagesBase = repositoryName && !repositoryName.endsWith('.github.io')
+    ? `/${repositoryName}/`
+    : '/'
   return {
+    // GitHub project sites live below /<repository>/, while an account site
+    // (for example cyruskazi-lex.github.io) lives at the domain root.
+    base: process.env.GITHUB_ACTIONS ? pagesBase : '/',
     plugins: [react(), ttsEndpoint(env), claudeEndpoint(env)],
   }
 })
