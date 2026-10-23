@@ -55,7 +55,7 @@ const obj = JSON.parse(clean);
 | --- | --- | --- | --- |
 | Beat 1 | Experience Alchemist | role, headline, outcomes, skills, integrity note | JSON |
 | Beat 2 | Zuri | four to six sentences of reasoning | plain text |
-| Beat 3 | Compliance, SOW | title, scope, deliverables, IP, EOR note, term | JSON |
+| Beat 3 | Compliance, SOW | title, scope, deliverables, IP, route note, term | JSON |
 | Beat 4 | Economics and Compliance | two labelled paragraphs | plain text |
 
 Exact system prompts and input and output shapes are in `agents/agent_prompt_library.md`. Settings for every call: model `claude-sonnet-4-6`, `max_tokens` 1000.

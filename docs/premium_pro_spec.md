@@ -1,5 +1,7 @@
 # FIND Premium Pro spec
 
+> **Deferred on 23 October 2026.** The paid candidate tier is out of 2027 scope. Candidates never pay for assessment, visibility, or placement. This spec is kept as history and returns for review at live, after willingness-to-pay research.
+
 Freemium gating. Basic is free. Premium unlocks priority matching, zero-commission escrow, and unlimited upskilling. Payment is stubbed at UI layer.
 
 Powered by Telos. Designed by Lexington Advisory Group.

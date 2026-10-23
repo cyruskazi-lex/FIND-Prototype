@@ -116,7 +116,8 @@ title           string
 scope           [string]
 deliverables    [string]
 ipClause        string
-eorNote         string        // references that remittance is handled, no rates asserted
+engagementRoute string       // employer_entity, partner_eor, or contractor_platform
+routeNote       string        // which entity or partner carries employment, payroll, and tax; no rates asserted
 term            string
 status          string        // draft, active, closed
 ```

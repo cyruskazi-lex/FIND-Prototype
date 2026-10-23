@@ -42,3 +42,17 @@ A short record of what the 20 October executive sync changed, and how the new ro
 2. Lexington licensing execution. Target 15 December. This gates the whole production launch.
 3. Rubric weights: keep the single as-built set or vary by role family. See the rubric spec, section 10.
 4. Admin depth for December 31: lean, or more, and what candidate or employer depth moves to Q1 if more.
+
+---
+
+## Decisions of 23 October 2026
+
+1. **Fumana is not the employer of record.** Employers use their own local entity or a licensed employer-of-record or payroll partner. Fumana supplies matching, verification, and statement of work templates with IP assignment, and earns subscriptions and success fees. Fumana holds no customer funds; licensed payment partners hold them. The Compliance agent checks routes and flags where a partner or counsel is needed. All references to an EOR shield or liability assumed are removed.
+2. **Candidate data stays in Africa.** Raw media, identity data, and transcripts are stored and transcribed in region. Only scrubbed text can reach a model provider, under consent, a processor agreement, and counsel's approval. Scoring moves to an in-region model once it agrees with human raters. Every record carries a residency region.
+3. **No paid candidate tier in 2027.** Candidates never pay for assessment, visibility, or placement. `docs/premium_pro_spec.md` is deferred.
+4. **Scores are guidance until validated.** A psychometrician owns the validation plan. Open instruments come from the IPIP, which is public domain. The Grit Scale, GSE, CD-RISC, and the Cultural Intelligence Scale are not cleared for production.
+5. **Employer demand is validated before the Q1 campaign.** Twenty interviews and three signed letters of intent by 18 December.
+6. **Engineering team exists.** Headcount and workstream owners are confirmed by 30 October. Non-engineering roles are listed in the product doc.
+7. **Soft launch is English only.** French ships at beta after translation checks.
+
+The full plan for each decision, with owners and dates, lives in the Fumana product doc, in the sections on legal and payments, data residency, assessment validation, employer demand validation, trust and safety, and the decisions register.

@@ -67,7 +67,7 @@ This is the hard list. In scope is built and hardened by December 12. Everything
 - The assessment: interview, dynamic question set beyond the current five, rubric-based scoring that shows its basis per dimension. This is the centre of the launch.
 - Growth dashboard: scores with per-dimension evidence, profile strength, trajectory view as a computed and labelled near-term version.
 - Experience Alchemist as a first-class screen.
-- Applications and hub, wallet and escrow as display and computed (real payments are backend, flagged), settings with the data vault.
+- Applications and hub, wallet and payouts as display and computed (funds held by licensed partners) (real payments are backend, flagged), settings with the data vault.
 - Contest a score, request human review, decision audit trail. These are launch-critical because the platform judges people, and a soft launch still judges real people.
 
 ### In scope, employer portal (Track A)
@@ -75,7 +75,7 @@ This is the hard list. In scope is built and hardened by December 12. Everything
 - SSO sign-in, or a credible interim auth if enterprise SSO is not ready. Auth is required for a real soft launch; the demo had none.
 - Engage Experts search on the shared store, bias-shielded cards, reveal-and-interview gate.
 - Talent pipeline Kanban: shortlisted, interviewing, SOW pending.
-- SOW generation, localized, with EOR and IP language, general and honest, no asserted tax rates.
+- SOW generation, localized, with the engagement route and IP assignment language, general and honest, no asserted tax rates.
 - Investments and the fee waterfall, all computed.
 
 ### In scope, admin portal, lean (Track A)
@@ -114,6 +114,13 @@ Fumana is the product. FIND Services is the venture. The single-brand direction 
 ### Gate 3: legal and AI-governance copy (owner: delegated legal reviewer, with Sirri)
 
 The platform makes automated decisions about people across jurisdictions. The plain-language ethics and data page, the fair-terms pledge, and any statutory references must be reviewed before real users arrive. No unverified legal specifics in the product. Target: 19 December.
+
+
+### Gates added on 23 October
+
+- **Data residency.** Counsel approves the design before real users arrive. Storage, speech to text, and identifier scrubbing run in region, and nothing identifying leaves without consent and a processor agreement.
+- **Employer demand.** Twenty employer interviews and three signed letters of intent by 18 December, before the Q1 campaign.
+- **Engagement model.** Fumana is not the employer of record. Every statement of work names an engagement route, and no text says Fumana employs anyone or handles tax.
 
 ---
 

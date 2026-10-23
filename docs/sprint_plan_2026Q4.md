@@ -58,7 +58,7 @@ A note on capacity. This is a bootstrapped team with a part-time revenue lead an
 |---|---|---|
 | Experience Alchemist as a first-class screen: live call, outcomes with basis, integrity note, save and copy. | ENG, SWE-AI | A |
 | Applications and hub: matches, applied roles, interview invites, status per application, reading the shared store. | ENG | A |
-| Wallet and escrow UI: balance, escrow held, payout history, gateway placeholders (M-Pesa, Paystack, Flutterwave), all computed and flagged that real payments are backend. | ENG | A |
+| Wallet and payouts UI: balance, partner-held funds, payout history, gateway placeholders (M-Pesa, Paystack, Flutterwave), all computed and flagged that real payments are backend. | ENG | A |
 | Settings and the data vault: language, notification toggles, export, delete. | ENG | A |
 | Contest a score, request human review, decision audit trail. Build plan Phase 4 A, B, E. | ENG | A |
 | Accommodations on the responsible-AI step, text-only path promoted to a chosen option. Build plan Phase 4 C. | ENG | A |
@@ -80,7 +80,7 @@ A note on capacity. This is a bootstrapped team with a part-time revenue lead an
 | Employer auth: enterprise SSO if ready, otherwise a credible interim sign-in. Admin auth with role-based access. | ENG | A |
 | Engage Experts search rebuilt on the shared store, bias-shielded cards, reveal-and-interview gate. | ENG | A |
 | Talent pipeline Kanban: shortlisted, interviewing, SOW pending, cards move. | ENG | A |
-| SOW generation: localized, EOR and IP language, no asserted tax rates. | ENG, SWE-AI | A |
+| SOW generation: localized, engagement route and IP assignment language, no asserted tax rates. | ENG, SWE-AI | A |
 | Investments and fee waterfall, computed. | ENG | A |
 | Lean admin: user list, verify and suspend, AgentRun audit-trail view, launch metrics. | ENG | A |
 | EESG impact Beat 4 confirmed solid for the pitch: live re-derivation, reset works. | ENG | A |

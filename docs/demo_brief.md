@@ -20,7 +20,7 @@ The scenario: a backend engineer in Lagos, an employer in Berlin needing a payme
 
 1. **Builder.** A messy, informal account of real work becomes a verified, recruiter-ready profile. The Experience Alchemist does the transformation and marks plainly what it will not claim.
 2. **Telos match.** Telos shows why this builder fits this employer as a chain of causal factors, not a keyword hit. Zuri narrates the reasoning on demand.
-3. **Employer.** The employer sees a bias-shielded, identity-masked profile and an auto-generated Statement of Work, with Fumana as the legal Employer of Record.
+3. **Employer.** The employer sees a bias-shielded, identity-masked profile and an auto-generated Statement of Work, with the engagement route named in the document (the employer's own entity or a licensed partner). Fumana is not the employer of record.
 4. **EESG impact.** The placement produces an SROI figure that shows its own derivation, mapped to SDG 8, 9, and 17. Trigger a currency move and two agents re-derive the value live.
 
 ## The wow moment

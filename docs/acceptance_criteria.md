@@ -31,8 +31,8 @@ A viewer can move through four beats in order, a builder's messy account becomes
 
 - [ ] The builder profile is shown with name, location, photo, and gender withheld.
 - [ ] Verified capabilities are visible.
-- [ ] Generating the Statement of Work makes a live model call and returns title, scope, deliverables, IP clause, EOR note, and term.
-- [ ] The EOR note references that remittance is handled, with no specific rate asserted.
+- [ ] Generating the Statement of Work makes a live model call and returns title, scope, deliverables, IP clause, engagement route note, and term.
+- [ ] The route note names which entity or licensed partner carries employment, payroll, and tax, with no specific rate asserted. No generated text says Fumana employs anyone.
 
 ## Beat 4, EESG impact
 

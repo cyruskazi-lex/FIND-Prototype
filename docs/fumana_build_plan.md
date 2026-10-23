@@ -32,7 +32,7 @@ Build these on the Carbon shell from Phase 0.
 
 Candidate:
 3. Applications and Hub. NO MODEL. Matches, applied roles, interview invites, status per application. Reads the shared store.
-4. Wallet and Escrow. NO MODEL for the UI. Balance, escrow held, payout history, payout method placeholders (M-Pesa, Paystack, Flutterwave). All display and computed, flagged that real payments are backend.
+4. Wallet and payouts. NO MODEL for the UI. Balance, funds held by a licensed payment partner, payout history, payout method placeholders (M-Pesa, Paystack, Flutterwave). All display and computed, flagged that real payments are backend. Fumana holds no customer funds.
 5. Community Ecosystem. NO MODEL. Fumana Squads list, peer activity, the impact portfolio and Good Citizen Points as computed counters.
 6. Settings and Comm. NO MODEL. Language, notification channels (WhatsApp, SMS, email) as toggles, two-factor placeholder, and the data vault (export, delete) that anchors the data-rights work in Phase 4.
 7. Async elevator pitch. NO MODEL. Wire the 60-second recorder that is currently a placeholder, reuse the interview camera capture.
@@ -57,8 +57,8 @@ Candidate:
 
 Employer:
 16. Zuri the marketplace economist. NEEDS MODEL. Budget and PPP guidance in the finance hub.
-17. SOW generation. NEEDS MODEL. Localized statement of work with EOR and IP language, general and honest, no asserted tax rates.
-18. Compliance hub (Trust and Safety, employer view). NO MODEL for the shell. EOR status, liability-assumed marker, per-engagement compliance checklist.
+17. SOW generation. NEEDS MODEL. Localized statement of work with an engagement route (employer entity, partner employer of record, or contractor platform) and IP assignment language, general and honest, no asserted tax rates.
+18. Compliance hub (Trust and Safety, employer view). NO MODEL for the shell. Engagement route and partner status per engagement, per-engagement compliance checklist. Fumana is not the employer of record and assumes no employment liability.
 
 ---
 
